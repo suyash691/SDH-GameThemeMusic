@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { getResolver } from '../actions/audio'
+import { autoResolveThemeMusic, getResolver } from '../actions/audio'
 
 import { getCache, updateCache } from '../cache/musicCache'
 import { useSettings } from '../hooks/useSettings'
@@ -22,6 +22,13 @@ const useThemeMusic = (appId: number) => {
       if (cache?.videoId?.length == 0) {
         return setAudio({ videoId: '', audioUrl: '' })
       } else if (cache?.videoId?.length) {
+        // Cached KHInsider tracks start with "khi:" — use URL directly
+        if (cache.videoId.startsWith('khi:')) {
+          return setAudio({
+            videoId: cache.videoId,
+            audioUrl: cache.videoId.slice(4)
+          })
+        }
         const newAudio = await resolver.getAudioUrlFromVideo({
           id: cache.videoId
         })
@@ -31,7 +38,11 @@ const useThemeMusic = (appId: number) => {
       } else if (settings.defaultMuted) {
         return setAudio({ videoId: '', audioUrl: '' })
       } else {
-        const newAudio = await resolver.getAudio(appName as string)
+        // Tiered auto-resolve: KHInsider → YouTube
+        const newAudio = await autoResolveThemeMusic(
+          appName as string,
+          settings.useYtDlp
+        )
         if (ignore) {
           return
         }

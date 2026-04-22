@@ -13,9 +13,6 @@ const useAudioPlayer = (
   isReady: boolean
 } => {
   const { setOnThemePage, onAppPage } = useAudioLoaderCompatState()
-  if (!onAppPage) {
-    setOnThemePage(true)
-  }
 
   const audioPlayer: HTMLAudioElement = useMemo(() => {
     const audio = new Audio()
@@ -23,13 +20,20 @@ const useAudioPlayer = (
     return audio
   }, [])
 
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [isReady, setIsReady] = useState(false)
+
+  // Fix: moved setOnThemePage into an effect instead of calling during render
+  useEffect(() => {
+    if (!onAppPage) {
+      setOnThemePage(true)
+    }
+  }, [onAppPage])
+
   audioPlayer.oncanplaythrough = () => {
     setIsReady(true)
     setOnThemePage(true)
   }
-
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
     if (audioUrl?.length) {

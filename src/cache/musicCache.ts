@@ -1,4 +1,4 @@
-import { call } from '@decky/api'
+import { callable } from '@decky/api'
 import localforage from 'localforage'
 
 const STORAGE_KEY = 'game-theme-music-cache'
@@ -13,6 +13,14 @@ type GameThemeMusicCache = {
 }
 
 type GameThemeMusicCacheMapping = { [key: string]: GameThemeMusicCache }
+
+const backendExportCache =
+  callable<[GameThemeMusicCacheMapping], void>('export_cache')
+const backendImportCache =
+  callable<[string], GameThemeMusicCacheMapping>('import_cache')
+const backendListCacheBackups = callable<[], string[]>('list_cache_backups')
+const backendClearCache = callable<[], void>('clear_cache')
+const backendClearDownloads = callable<[], void>('clear_downloads')
 
 export async function updateCache(appId: number, newData: GameThemeMusicCache) {
   const oldCache = (await localforage.getItem(
@@ -34,14 +42,11 @@ export async function getFullCache(): Promise<GameThemeMusicCacheMapping> {
 }
 
 export async function exportCache() {
-  await call<[GameThemeMusicCacheMapping]>('export_cache', await getFullCache())
+  await backendExportCache(await getFullCache())
 }
 
 export async function importCache(name: string) {
-  const newCache = await call<[string], GameThemeMusicCacheMapping>(
-    'import_cache',
-    name
-  )
+  const newCache = await backendImportCache(name)
   localforage.clear()
   for (const [key, value] of Object.entries(newCache)) {
     await localforage.setItem(key, value)
@@ -49,7 +54,7 @@ export async function importCache(name: string) {
 }
 
 export async function listCacheBackups(): Promise<string[]> {
-  return await call<[], string[]>('list_cache_backups')
+  return await backendListCacheBackups()
 }
 
 export async function clearCache(appId?: number) {
@@ -57,7 +62,7 @@ export async function clearCache(appId?: number) {
     localforage.removeItem(appId.toString())
   } else {
     localforage.clear()
-    await call<[]>('clear_cache')
+    await backendClearCache()
   }
 }
 
@@ -69,5 +74,5 @@ export async function getCache(
 }
 
 export async function clearDownloads() {
-  await call<[]>('clear_downloads')
+  await backendClearDownloads()
 }

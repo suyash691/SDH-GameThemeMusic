@@ -209,6 +209,91 @@ class Plugin:
         with open(path, "r") as file:
             return json.load(file)
 
+    async def search_khinsider(self, game_name: str):
+        """Search KHInsider for game soundtracks by name."""
+        logger.info(f"Searching KHInsider for: {game_name}")
+        search_url = "https://downloads.khinsider.com/search"
+        try:
+            async with aiohttp.ClientSession() as session:
+                res = await session.get(
+                    search_url,
+                    params={"search": game_name},
+                    ssl=self.ssl_context,
+                )
+                res.raise_for_status()
+                html = await res.text()
+            results = []
+            # Parse search results table rows: <a href="/game-soundtracks/album/SLUG">NAME</a>
+            import re
+            for match in re.finditer(
+                r'<a\s+href="(/game-soundtracks/album/[^"]+)"[^>]*>([^<]+)</a>',
+                html,
+            ):
+                album_path, album_name = match.group(1), match.group(2).strip()
+                if album_name:
+                    results.append({
+                        "name": album_name,
+                        "url": f"https://downloads.khinsider.com{album_path}",
+                        "trackCount": 0,
+                    })
+            logger.info(f"KHInsider found {len(results)} results")
+            return results[:10]
+        except Exception as e:
+            logger.warning(f"KHInsider search failed: {e}")
+            return []
+
+    async def get_khinsider_track_url(self, album_url: str):
+        """Get the first playable track URL from a KHInsider album page.
+        Looks for 'Title', 'Main Theme', or 'Main Menu' tracks first, else first track."""
+        logger.info(f"Fetching KHInsider album: {album_url}")
+        try:
+            import re
+            async with aiohttp.ClientSession() as session:
+                res = await session.get(album_url, ssl=self.ssl_context)
+                res.raise_for_status()
+                html = await res.text()
+            # Extract track links: <a href="/game-soundtracks/album/SLUG/TRACK.mp3">
+            track_links = re.findall(
+                r'<a\s+href="(/game-soundtracks/album/[^"]+\.mp3)"',
+                html,
+            )
+            if not track_links:
+                logger.info("No tracks found on album page")
+                return None
+
+            # Prefer theme-like tracks
+            preferred = None
+            for link in track_links:
+                lower = link.lower()
+                if any(
+                    kw in lower
+                    for kw in ["title", "main-theme", "main_theme", "menu", "opening", "intro"]
+                ):
+                    preferred = link
+                    break
+            chosen = preferred or track_links[0]
+
+            # Fetch the track page to get the actual audio URL
+            track_page_url = f"https://downloads.khinsider.com{chosen}"
+            res2 = await session.get(track_page_url, ssl=self.ssl_context)
+            res2.raise_for_status()
+            track_html = await res2.text()
+
+            # Find the actual audio file link
+            audio_match = re.search(
+                r'<a\s+[^>]*href="(https://[^"]+\.mp3)"[^>]*>Click here to download',
+                track_html,
+            )
+            if audio_match:
+                audio_url = audio_match.group(1)
+                logger.info(f"KHInsider audio URL: {audio_url}")
+                return audio_url
+            logger.info("Could not extract audio URL from track page")
+            return None
+        except Exception as e:
+            logger.warning(f"KHInsider track fetch failed: {e}")
+            return None
+
     async def clear_cache(self):
         logger.info("Clearing all cache files...")
         try:

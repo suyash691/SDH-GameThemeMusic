@@ -12,9 +12,10 @@ import {
   ShowModalResult,
   SingleDropdownOption,
   SliderField,
+  TextField,
   ToggleField
 } from '@decky/ui'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { SiCrowdin, SiDiscord, SiGithub, SiKofi } from "react-icons/si";
 import { useSettings } from '../../hooks/useSettings'
 import useTranslations from '../../hooks/useTranslations'
@@ -53,7 +54,14 @@ export default function Index() {
   const t = useTranslations()
 
   const { instances, instancesLoading } = useInvidiousInstances()
-  console.log(instances)
+
+  const isCustomUrl = !instances.some(
+    (ins) => ins.url === settings.invidiousInstance
+  )
+  const [useCustomInstance, setUseCustomInstance] = useState(isCustomUrl)
+  const [customInstanceUrl, setCustomInstanceUrl] = useState(
+    isCustomUrl ? settings.invidiousInstance : ''
+  )
 
   const instanceOptions = useMemo<SingleDropdownOption[]>(
     () =>
@@ -209,25 +217,49 @@ export default function Index() {
           />
         </PanelSectionRow>
         {!settings.useYtDlp && (
-          <PanelSectionRow>
-            <DropdownItem
-              disabled={
-                instancesLoading ||
-                !instanceOptions?.length ||
-                settingsIsLoading
-              }
-              label={t('invidiousInstance')}
-              description={t('invidiousInstanceDescription')}
-              menuLabel={t('invidiousInstance')}
-              rgOptions={instanceOptions}
-              selectedOption={
-                instanceOptions.find(
-                  (o) => o.data === settings.invidiousInstance
-                )?.data
-              }
-              onChange={(newVal) => setInvidiousInstance(newVal.data)}
-            />
-          </PanelSectionRow>
+          <>
+            <PanelSectionRow>
+              <ToggleField
+                checked={useCustomInstance}
+                label={t('customInvidiousInstance')}
+                description={t('customInvidiousInstanceDescription')}
+                onChange={(newVal: boolean) => setUseCustomInstance(newVal)}
+              />
+            </PanelSectionRow>
+            {useCustomInstance ? (
+              <PanelSectionRow>
+                <TextField
+                  label={t('customInvidiousUrl')}
+                  description={t('customInvidiousUrlDescription')}
+                  value={customInstanceUrl}
+                  onChange={(e) => {
+                    setCustomInstanceUrl(e.target.value)
+                    setInvidiousInstance(e.target.value)
+                  }}
+                />
+              </PanelSectionRow>
+            ) : (
+              <PanelSectionRow>
+                <DropdownItem
+                  disabled={
+                    instancesLoading ||
+                    !instanceOptions?.length ||
+                    settingsIsLoading
+                  }
+                  label={t('invidiousInstance')}
+                  description={t('invidiousInstanceDescription')}
+                  menuLabel={t('invidiousInstance')}
+                  rgOptions={instanceOptions}
+                  selectedOption={
+                    instanceOptions.find(
+                      (o) => o.data === settings.invidiousInstance
+                    )?.data
+                  }
+                  onChange={(newVal) => setInvidiousInstance(newVal.data)}
+                />
+              </PanelSectionRow>
+            )}
+          </>
         )}
         <PanelSectionRow>
           <ToggleField

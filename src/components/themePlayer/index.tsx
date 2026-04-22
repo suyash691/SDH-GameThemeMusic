@@ -1,12 +1,32 @@
 import { useParams } from '@decky/ui'
-import { ReactElement, useEffect } from 'react'
+import { Component, ReactElement, ReactNode, useEffect } from 'react'
 
 import useThemeMusic from '../../hooks/useThemeMusic'
 import { useSettings } from '../../hooks/useSettings'
 import { getCache } from '../../cache/musicCache'
 import useAudioPlayer from '../../hooks/useAudioPlayer'
 
-export default function ThemePlayer(): ReactElement {
+class ThemePlayerErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('ThemePlayer error:', error)
+  }
+
+  render() {
+    if (this.state.hasError) return null
+    return this.props.children
+  }
+}
+
+function ThemePlayerInner(): ReactElement {
   const { settings, isLoading: settingsIsLoading } = useSettings()
   const { appid } = useParams<{ appid: string }>()
   const { audio } = useThemeMusic(parseInt(appid))
@@ -33,4 +53,12 @@ export default function ThemePlayer(): ReactElement {
   }, [audio?.audioUrl, audioPlayer.isReady])
 
   return <></>
+}
+
+export default function ThemePlayer(): ReactElement {
+  return (
+    <ThemePlayerErrorBoundary>
+      <ThemePlayerInner />
+    </ThemePlayerErrorBoundary>
+  )
 }

@@ -1,4 +1,4 @@
-import { call } from '@decky/api'
+import { callable } from '@decky/api'
 import { useEffect, useState } from 'react'
 
 export type Settings = {
@@ -9,7 +9,7 @@ export type Settings = {
   volume: number
 }
 
-export const defaultSettings = {
+export const defaultSettings: Settings = {
   defaultMuted: false,
   useYtDlp: false,
   downloadAudio: false,
@@ -17,19 +17,17 @@ export const defaultSettings = {
   volume: 1
 }
 
+const getSetting = callable<[string, Settings], Settings>('get_setting')
+const setSetting = callable<[string, Settings], void>('set_setting')
+
 export const useSettings = () => {
   const [settings, setSettings] = useState<Settings>(defaultSettings)
-
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const getData = async () => {
       setIsLoading(true)
-      const savedSettings = await call<[string, Settings], Settings>(
-        'get_setting',
-        'settings',
-        settings
-      )
+      const savedSettings = await getSetting('settings', defaultSettings)
       setSettings(savedSettings)
       setIsLoading(false)
     }
@@ -42,11 +40,7 @@ export const useSettings = () => {
   ) {
     setSettings((oldSettings) => {
       const newSettings = { ...oldSettings, [key]: value }
-      call<[string, Settings], Settings>(
-        'set_setting',
-        'settings',
-        newSettings
-      ).catch(console.error)
+      setSetting('settings', newSettings).catch(console.error)
       return newSettings
     })
   }
@@ -56,7 +50,6 @@ export const useSettings = () => {
   }
   function setUseYtDlp(value: Settings['useYtDlp']) {
     updateSettings('useYtDlp', value)
-    // Currently, downloads don't work with Invidious, so they can only be enabled iff yt-dlp is enabled.
     updateSettings('downloadAudio', value)
   }
   function setDownloadAudio(value: Settings['downloadAudio']) {

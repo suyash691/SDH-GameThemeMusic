@@ -1,4 +1,4 @@
-import { call } from '@decky/api'
+import { callable } from '@decky/api'
 import {
   YouTubeVideo,
   YouTubeInitialData,
@@ -6,6 +6,26 @@ import {
   YouTubeVideoPreview
 } from '../../types/YouTube'
 import { Settings, defaultSettings } from '../hooks/useSettings'
+
+// Backend callables
+const getSetting = callable<[string, Settings], Settings>('get_setting')
+const searchYt = callable<[string], void>('search_yt')
+const nextYtResult = callable<[], YouTubeVideoPreview | null>('next_yt_result')
+const singleYtUrl = callable<[string], string | null>('single_yt_url')
+const downloadYtAudio = callable<[string], void>('download_yt_audio')
+const downloadUrl = callable<[string, string], void>('download_url')
+const searchKhinsider = callable<[string], KHInsiderResult[]>(
+  'search_khinsider'
+)
+const getKhinsiderTrackUrl = callable<[string], string | null>(
+  'get_khinsider_track_url'
+)
+
+export type KHInsiderResult = {
+  name: string
+  url: string
+  trackCount: number
+}
 
 abstract class AudioResolver {
   abstract getYouTubeSearchResults(
@@ -19,7 +39,9 @@ abstract class AudioResolver {
   async getAudio(
     appName: string
   ): Promise<{ videoId: string; audioUrl: string } | undefined> {
-    const videos = this.getYouTubeSearchResults(appName + ' Theme Music')
+    const videos = this.getYouTubeSearchResults(
+      `"${appName}" official soundtrack main theme`
+    )
     for await (const video of videos) {
       const audioUrl = await this.getAudioUrlFromVideo(video)
       if (audioUrl?.length) {
@@ -32,11 +54,7 @@ abstract class AudioResolver {
 
 class InvidiousAudioResolver extends AudioResolver {
   async getEndpoint() {
-    const savedSettings = await call<[string, Settings], Settings>(
-      'get_setting',
-      'settings',
-      defaultSettings
-    )
+    const savedSettings = await getSetting('settings', defaultSettings)
     return savedSettings.invidiousInstance
   }
 
@@ -68,7 +86,9 @@ class InvidiousAudioResolver extends AudioResolver {
     return
   }
 
-  async getAudioUrlFromVideo(video: YouTubeVideo): Promise<string | undefined> {
+  async getAudioUrlFromVideo(
+    video: YouTubeVideo
+  ): Promise<string | undefined> {
     try {
       const endpoint = await this.getEndpoint()
       const res = await fetch(
@@ -88,7 +108,7 @@ class InvidiousAudioResolver extends AudioResolver {
         return audio?.url
       }
     } catch (err) {
-      console.log(err)
+      console.debug(err)
     }
     return undefined
   }
@@ -101,7 +121,7 @@ class InvidiousAudioResolver extends AudioResolver {
       }
     }
     try {
-      await call<[string, string]>('download_url', video.url, video.id)
+      await downloadUrl(video.url, video.id)
       return true
     } catch (e) {
       console.error(e)
@@ -115,11 +135,11 @@ class YtDlpAudioResolver extends AudioResolver {
     searchTerm: string
   ): AsyncIterable<YouTubeVideoPreview> {
     try {
-      await call<[string]>('search_yt', searchTerm)
-      let result = await call<[], YouTubeVideoPreview | null>('next_yt_result')
+      await searchYt(searchTerm)
+      let result = await nextYtResult()
       while (result) {
         yield result
-        result = await call<[], YouTubeVideoPreview | null>('next_yt_result')
+        result = await nextYtResult()
       }
       return
     } catch (err) {
@@ -128,29 +148,72 @@ class YtDlpAudioResolver extends AudioResolver {
     return
   }
 
-  async getAudioUrlFromVideo(video: YouTubeVideo): Promise<string | undefined> {
+  async getAudioUrlFromVideo(
+    video: YouTubeVideo
+  ): Promise<string | undefined> {
     if (video.url) {
       return video.url
     } else {
-      // We need to retrieve the audio URL first.
-      // This may return a local filesystem URL if the file has been downloaded before.
-      const result = await call<[string], string | null>(
-        'single_yt_url',
-        video.id
-      )
+      const result = await singleYtUrl(video.id)
       return result || undefined
     }
   }
 
   async downloadAudio(video: YouTubeVideo): Promise<boolean> {
     try {
-      await call<[string]>('download_yt_audio', video.id)
+      await downloadYtAudio(video.id)
       return true
     } catch (e) {
       console.error(e)
       return false
     }
   }
+}
+
+// KHInsider resolver — searches the game soundtrack database for direct audio
+export async function searchKHInsider(
+  gameName: string
+): Promise<KHInsiderResult[]> {
+  try {
+    return await searchKhinsider(gameName)
+  } catch (e) {
+    console.debug('KHInsider search failed:', e)
+    return []
+  }
+}
+
+export async function getKHInsiderTrackAudioUrl(
+  albumUrl: string
+): Promise<string | null> {
+  try {
+    return await getKhinsiderTrackUrl(albumUrl)
+  } catch (e) {
+    console.debug('KHInsider track fetch failed:', e)
+    return null
+  }
+}
+
+// Tiered auto-resolve: KHInsider first, then YouTube fallback
+export async function autoResolveThemeMusic(
+  appName: string,
+  useYtDlp: boolean
+): Promise<{ videoId: string; audioUrl: string } | undefined> {
+  // Tier 1: Try KHInsider for a direct soundtrack match
+  try {
+    const results = await searchKHInsider(appName)
+    if (results.length > 0) {
+      const trackUrl = await getKHInsiderTrackAudioUrl(results[0].url)
+      if (trackUrl) {
+        return { videoId: `khi:${results[0].url}`, audioUrl: trackUrl }
+      }
+    }
+  } catch (e) {
+    console.debug('KHInsider auto-resolve failed, falling back to YouTube:', e)
+  }
+
+  // Tier 2: YouTube fallback
+  const resolver = getResolver(useYtDlp)
+  return resolver.getAudio(appName)
 }
 
 export function getResolver(useYtDlp: boolean): AudioResolver {
