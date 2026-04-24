@@ -9,9 +9,8 @@ Play theme songs on your game pages. Compatible with the [AudioLoader](https://g
 
 This plugin will find a game's theme music based on the game's name and play it in the background. It searches multiple sources in order:
 
-1. **Steam Store** — checks if the game has an official soundtrack DLC
-2. **KHInsider** — searches the game soundtrack database (100K+ soundtracks)
-3. **YouTube** — falls back to YouTube via yt-dlp
+1. **KHInsider** — searches the game soundtrack database (100K+ soundtracks)
+2. **YouTube** — falls back to YouTube via yt-dlp
 
 An internet connection is required. It also supports non-Steam games.
 
