@@ -60,5 +60,12 @@
     "useYtDlp": "Use yt-dlp",
     "useYtDlpDescription": "Access YouTube directly without Invidious",
     "volume": "Music Volume",
-    "volumeDescription": "Adjust music volume"
+    "volumeDescription": "Adjust music volume",
+    "customInvidiousInstance": "Egyéni példány használata",
+    "customInvidiousInstanceDescription": "Adja meg saját Invidious-példány URL-jét, ahelyett, hogy a listából választana",
+    "customInvidiousUrl": "Példány URL-je",
+    "customInvidiousUrlDescription": "példáulhttps://invidious.example.com",
+    "gameOST": "Játék OST",
+    "khinsiderSearchHint": "Pontos név alapján keresi a játék hangsávjainak adatbázisát",
+    "youtubeSearchHint": "Szükség szerint szerkessze a fenti keresőkifejezéseket"
 }

@@ -28,7 +28,8 @@ function patchLibraryApp(AudioLoaderCompatState: AudioLoaderCompatState) {
         (_: Array<Record<string, unknown>>, ret?: ReactElement) => {
           const container = findInReactTree(
             ret,
-            (x: ReactElement) =>
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (x: any) =>
               Array.isArray(x?.props?.children) &&
               x?.props?.className?.includes(appDetailsClasses.InnerContainer)
           )

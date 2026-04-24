@@ -7,7 +7,7 @@ import { getCache } from '../../cache/musicCache'
 import useAudioPlayer from '../../hooks/useAudioPlayer'
 
 class ThemePlayerErrorBoundary extends Component<
-  { children: ReactNode },
+  { children?: ReactNode },
   { hasError: boolean }
 > {
   state = { hasError: false }

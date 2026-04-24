@@ -60,5 +60,12 @@
     "useYtDlp": "Use yt-dlp",
     "useYtDlpDescription": "Access YouTube directly without Invidious",
     "volume": "Musikvolym",
-    "volumeDescription": "Justera musikvolymen"
+    "volumeDescription": "Justera musikvolymen",
+    "customInvidiousInstance": "Använd anpassad instans",
+    "customInvidiousInstanceDescription": "Ange din egen Invidious-instans-URL istället för att välja från listan",
+    "customInvidiousUrl": "Förekomstens URL",
+    "customInvidiousUrlDescription": "till exempelhttps://invidious.example.com",
+    "gameOST": "Spel OST",
+    "khinsiderSearchHint": "Söker i spelets soundtrack-databas med exakt namn",
+    "youtubeSearchHint": "Redigera söktermerna ovan efter behov"
 }

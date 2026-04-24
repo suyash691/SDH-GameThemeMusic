@@ -60,5 +60,12 @@
     "useYtDlp": "Использовать yt-dlp",
     "useYtDlpDescription": "Доступ к YouTube напрямую, без Invidious",
     "volume": "Громкость музыки",
-    "volumeDescription": "Регулировка громкости музыки"
+    "volumeDescription": "Регулировка громкости музыки",
+    "customInvidiousInstance": "Использовать собственный экземпляр",
+    "customInvidiousInstanceDescription": "Введите свой собственный URL-адрес экземпляра Invidious вместо того, чтобы выбирать из списка.",
+    "customInvidiousUrl": "URL-адрес экземпляра",
+    "customInvidiousUrlDescription": "напримерhttps://invidious.example.com",
+    "gameOST": "Игра OST",
+    "khinsiderSearchHint": "Ищет базу данных саундтреков к игре по точному названию.",
+    "youtubeSearchHint": "При необходимости отредактируйте условия поиска выше."
 }

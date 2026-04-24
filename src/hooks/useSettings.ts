@@ -50,7 +50,6 @@ export const useSettings = () => {
   }
   function setUseYtDlp(value: Settings['useYtDlp']) {
     updateSettings('useYtDlp', value)
-    updateSettings('downloadAudio', value)
   }
   function setDownloadAudio(value: Settings['downloadAudio']) {
     updateSettings('downloadAudio', value)

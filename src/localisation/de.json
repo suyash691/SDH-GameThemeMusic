@@ -60,5 +60,12 @@
     "useYtDlp": "yt-dlp verwenden",
     "useYtDlpDescription": "Direkt auf YouTube zugreifen statt über Invidious",
     "volume": "Musik Lautstärke",
-    "volumeDescription": "Musik Lautstärke anpassen"
+    "volumeDescription": "Musik Lautstärke anpassen",
+    "customInvidiousInstance": "Benutzerdefinierte Instanz verwenden",
+    "customInvidiousInstanceDescription": "Geben Sie Ihre eigene Invidious-Instanz-URL ein, anstatt sie aus der Liste auszuwählen",
+    "customInvidiousUrl": "Instanz-URL",
+    "customInvidiousUrlDescription": "z.B.https://invidious.example.com",
+    "gameOST": "Spiel-OST",
+    "khinsiderSearchHint": "Durchsucht die Soundtrack-Datenbank des Spiels nach dem genauen Namen",
+    "youtubeSearchHint": "Bearbeiten Sie die Suchbegriffe oben nach Bedarf"
 }

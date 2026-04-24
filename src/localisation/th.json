@@ -60,5 +60,12 @@
     "useYtDlp": "Use yt-dlp",
     "useYtDlpDescription": "Access YouTube directly without Invidious",
     "volume": "Music Volume",
-    "volumeDescription": "Adjust music volume"
+    "volumeDescription": "Adjust music volume",
+    "customInvidiousInstance": "ใช้อินสแตนซ์ที่กำหนดเอง",
+    "customInvidiousInstanceDescription": "ป้อน URL อินสแตนซ์ Invidious ของคุณเองแทนการเลือกจากรายการ",
+    "customInvidiousUrl": "URL ของอินสแตนซ์",
+    "customInvidiousUrlDescription": "เช่นhttps://invidious.example.com",
+    "gameOST": "เพลงประกอบเกม",
+    "khinsiderSearchHint": "ค้นหาฐานข้อมูลเพลงประกอบเกมด้วยชื่อที่แน่นอน",
+    "youtubeSearchHint": "แก้ไขคำค้นหาด้านบนตามต้องการ"
 }

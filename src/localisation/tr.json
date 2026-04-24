@@ -60,5 +60,12 @@
     "useYtDlp": "Use yt-dlp",
     "useYtDlpDescription": "Access YouTube directly without Invidious",
     "volume": "Müzik Sesi",
-    "volumeDescription": "Müzik Sesini Ayarlama"
+    "volumeDescription": "Müzik Sesini Ayarlama",
+    "customInvidiousInstance": "Özel örneği kullan",
+    "customInvidiousInstanceDescription": "Listeden seçim yapmak yerine kendi Invidious örnek URL'nizi girin",
+    "customInvidiousUrl": "Örnek URL'si",
+    "customInvidiousUrlDescription": "örneğinhttps://invidious.example.com",
+    "gameOST": "Oyun OST'si",
+    "khinsiderSearchHint": "Oyun müziği veritabanını tam isme göre arar",
+    "youtubeSearchHint": "Yukarıdaki arama terimlerini gerektiği gibi düzenleyin"
 }

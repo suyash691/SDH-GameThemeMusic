@@ -6,7 +6,9 @@
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c -w",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
+    "test": "python3 -m pytest tests/ -v && npx vitest run"
   },
   "repository": {
     "type": "git",
@@ -28,26 +30,33 @@
   "remote_binary": [
     {
       "name": "yt-dlp",
-      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2025.06.09/yt-dlp",
-      "sha256hash": "efba94b3be7911b96bf35bb7437dcf218ab7d244def6d57982af5609f9aeeeb0"
+      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.03.17/yt-dlp",
+      "sha256hash": "3bda0968a01cde70d26720653003b28553c71be14dcb2e5f4c24e9921fdad745"
     }
   ],
   "devDependencies": {
     "@decky/rollup": "^1.0.2",
     "@decky/ui": "^4.11.0",
     "@eslint/js": "^9.15.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/react": "19.1.1",
     "@types/react-dom": "19.1.1",
     "@types/webpack": "^5.28.5",
+    "@vitest/coverage-v8": "^4.1.5",
     "eslint": "^9.15.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-react": "^7.37.2",
+    "jsdom": "^29.0.2",
     "prettier": "^3.4.1",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
     "rollup": "^4.53.3",
     "rollup-plugin-external-globals": "^0.13.0",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.16.0"
+    "typescript-eslint": "^8.16.0",
+    "vitest": "^4.1.5"
   },
   "dependencies": {
     "@decky/api": "^1.1.3",

@@ -14,52 +14,65 @@ const useThemeMusic = (appId: number) => {
   const appDetails = appStore.GetAppOverviewByGameID(appId)
   const appName = appDetails?.display_name?.replace(/(™|®|©)/g, '')
 
+  const ready = Boolean(appName?.length) && !settingsLoading
+
   useEffect(() => {
+    if (!ready) return
+
     let ignore = false
     async function getData() {
-      const resolver = getResolver(settings.useYtDlp)
       const cache = await getCache(appId)
+
+      // User explicitly chose "No Music"
       if (cache?.videoId?.length == 0) {
         return setAudio({ videoId: '', audioUrl: '' })
-      } else if (cache?.videoId?.length) {
-        // Cached KHInsider tracks start with "khi:" — use URL directly
-        if (cache.videoId.startsWith('khi:')) {
-          return setAudio({
-            videoId: cache.videoId,
-            audioUrl: cache.videoId.slice(4)
-          })
-        }
-        const newAudio = await resolver.getAudioUrlFromVideo({
-          id: cache.videoId
-        })
-        if (newAudio?.length) {
-          return setAudio({ videoId: cache.videoId, audioUrl: newAudio })
-        }
-      } else if (settings.defaultMuted) {
-        return setAudio({ videoId: '', audioUrl: '' })
-      } else {
-        // Tiered auto-resolve: KHInsider → YouTube
-        const newAudio = await autoResolveThemeMusic(
-          appName as string,
-          settings.useYtDlp
-        )
-        if (ignore) {
-          return
-        }
-        if (!newAudio?.audioUrl?.length) {
-          return setAudio({ videoId: '', audioUrl: '' })
-        }
-        await updateCache(appId, newAudio)
-        return setAudio(newAudio)
       }
+
+      // User has a cached override — try to resolve its audio URL
+      if (cache?.videoId?.length) {
+        // KHInsider tracks store the direct audio URL after khi: prefix
+        if (cache.videoId.startsWith('khi:')) {
+          const audioUrl = cache.videoId.slice(4)
+          return setAudio({ videoId: cache.videoId, audioUrl })
+        }
+        // Try resolving the cached YouTube video ID
+        try {
+          const resolver = getResolver(settings.useYtDlp)
+          const newAudio = await resolver.getAudioUrlFromVideo({
+            id: cache.videoId
+          })
+          if (newAudio?.length) {
+            return setAudio({ videoId: cache.videoId, audioUrl: newAudio })
+          }
+        } catch (e) {
+          console.debug('Cached track resolution failed, will auto-resolve:', e)
+        }
+      }
+
+      // Default muted — don't auto-play
+      if (settings.defaultMuted && !cache?.videoId?.length) {
+        return setAudio({ videoId: '', audioUrl: '' })
+      }
+
+      // Auto-resolve: Steam Store → KHInsider → YouTube
+      if (ignore) return
+      const newAudio = await autoResolveThemeMusic(
+        appName as string,
+        appId,
+        settings.useYtDlp
+      )
+      if (ignore) return
+      if (!newAudio?.audioUrl?.length) {
+        return setAudio({ videoId: '', audioUrl: '' })
+      }
+      await updateCache(appId, newAudio)
+      return setAudio(newAudio)
     }
-    if (appName?.length && !settingsLoading) {
-      getData()
-    }
+    getData()
     return () => {
       ignore = true
     }
-  }, [appName, settingsLoading])
+  }, [appId, ready])
 
   return {
     audio

@@ -60,5 +60,12 @@
     "useYtDlp": "Use yt-dlp",
     "useYtDlpDescription": "Access YouTube directly without Invidious",
     "volume": "음악 볼륨",
-    "volumeDescription": "음악 볼륨 조절"
+    "volumeDescription": "음악 볼륨 조절",
+    "customInvidiousInstance": "커스텀 인스턴스 사용",
+    "customInvidiousInstanceDescription": "목록에서 선택하는 대신 자신만의 Invidious 인스턴스 URL을 입력하세요.",
+    "customInvidiousUrl": "인스턴스 URL",
+    "customInvidiousUrlDescription": "예를 들어https://invidious.example.com",
+    "gameOST": "게임 OST",
+    "khinsiderSearchHint": "정확한 이름으로 게임 사운드트랙 데이터베이스를 검색합니다.",
+    "youtubeSearchHint": "필요에 따라 위의 검색어를 수정하세요."
 }

@@ -60,5 +60,12 @@
     "useYtDlp": "Use yt-dlp",
     "useYtDlpDescription": "Access YouTube directly without Invidious",
     "volume": "Music Volume",
-    "volumeDescription": "Adjust music volume"
+    "volumeDescription": "Adjust music volume",
+    "customInvidiousInstance": "Bruk egendefinert forekomst",
+    "customInvidiousInstanceDescription": "Skriv inn din egen Invidious-instans-URL i stedet for å velge fra listen",
+    "customInvidiousUrl": "Forekomst URL",
+    "customInvidiousUrlDescription": "f.eks.https://invidious.example.com",
+    "gameOST": "Spill OST",
+    "khinsiderSearchHint": "Søker etter spillets lydspordatabase etter eksakt navn",
+    "youtubeSearchHint": "Rediger søkeordene ovenfor etter behov"
 }

@@ -60,5 +60,12 @@
     "useYtDlp": "Use yt-dlp",
     "useYtDlpDescription": "Access YouTube directly without Invidious",
     "volume": "Volume musica",
-    "volumeDescription": "Regola il volume della musica"
+    "volumeDescription": "Regola il volume della musica",
+    "customInvidiousInstance": "Utilizza l'istanza personalizzata",
+    "customInvidiousInstanceDescription": "Inserisci il tuo URL dell'istanza Invidious invece di sceglierlo dall'elenco",
+    "customInvidiousUrl": "URL dell'istanza",
+    "customInvidiousUrlDescription": "per esempio.https://invidious.esempio.com",
+    "gameOST": "OST del gioco",
+    "khinsiderSearchHint": "Cerca nel database delle colonne sonore dei giochi in base al nome esatto",
+    "youtubeSearchHint": "Modifica i termini di ricerca sopra secondo necessità"
 }

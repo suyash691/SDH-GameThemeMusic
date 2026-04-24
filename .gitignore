@@ -46,4 +46,9 @@ backend/out
 
 .pnpm-store/
 cli/
+*.zip
 out/
+coverage/
+.coverage
+coverage-backend.json
+package-lock.json

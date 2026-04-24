@@ -14,10 +14,12 @@ type GameThemeMusicCache = {
 
 type GameThemeMusicCacheMapping = { [key: string]: GameThemeMusicCache }
 
-const backendExportCache =
-  callable<[GameThemeMusicCacheMapping], void>('export_cache')
-const backendImportCache =
-  callable<[string], GameThemeMusicCacheMapping>('import_cache')
+const backendExportCache = callable<[GameThemeMusicCacheMapping], void>(
+  'export_cache'
+)
+const backendImportCache = callable<[string], GameThemeMusicCacheMapping>(
+  'import_cache'
+)
 const backendListCacheBackups = callable<[], string[]>('list_cache_backups')
 const backendClearCache = callable<[], void>('clear_cache')
 const backendClearDownloads = callable<[], void>('clear_downloads')

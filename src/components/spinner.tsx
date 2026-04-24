@@ -1,40 +1,26 @@
 import { ImSpinner2 } from 'react-icons/im'
+import { useEffect } from 'react'
+
+const STYLE_ID = 'gtm-spinner-style'
+const STYLE_CSS = `
+.gtm-icon-spin {
+  animation: gtm-icon-spin 2s infinite linear;
+}
+@keyframes gtm-icon-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(359deg); }
+}
+`
 
 export default function Spinner() {
-  return (
-    <div>
-      <style>
-        {`
-            .icon-spin {
-              
-              -webkit-animation: icon-spin 2s infinite linear;
-                      animation: icon-spin 2s infinite linear;
-            }
-            
-            @-webkit-keyframes icon-spin {
-              0% {
-                -webkit-transform: rotate(0deg);
-                        transform: rotate(0deg);
-              }
-              100% {
-                -webkit-transform: rotate(359deg);
-                        transform: rotate(359deg);
-              }
-            }
-            
-            @keyframes icon-spin {
-              0% {
-                -webkit-transform: rotate(0deg);
-                        transform: rotate(0deg);
-              }
-              100% {
-                -webkit-transform: rotate(359deg);
-                        transform: rotate(359deg);
-              }
-            }
-              `}
-      </style>
-      <ImSpinner2 className="icon-spin" />
-    </div>
-  )
+  useEffect(() => {
+    if (!document.getElementById(STYLE_ID)) {
+      const style = document.createElement('style')
+      style.id = STYLE_ID
+      style.textContent = STYLE_CSS
+      document.head.appendChild(style)
+    }
+  }, [])
+
+  return <ImSpinner2 className="gtm-icon-spin" />
 }

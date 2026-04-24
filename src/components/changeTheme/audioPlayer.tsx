@@ -15,6 +15,7 @@ export default function AudioPlayer({
   video,
   volume
 }: {
+  key?: string
   video: YouTubeVideoPreview & { isPlaying: boolean }
   volume: number
   handlePlay: (startPlaying: boolean) => void
@@ -90,30 +91,32 @@ export default function AudioPlayer({
           width: '230px'
         }}
       >
-        <div
-          style={{
-            position: 'relative',
-            width: '230px',
-            height: 0,
-            paddingBottom: '56.25%',
-            overflow: 'hidden'
-          }}
-        >
-          <img
-            src={video.thumbnail}
-            alt={video.title}
+        {video.thumbnail ? (
+          <div
             style={{
-              overflow: 'hidden',
+              position: 'relative',
               width: '230px',
-              borderRadius: '6px',
-              position: 'absolute',
-              top: '50%',
-              left: 0,
-              transform: 'translateY(-50%)',
-              height: 'auto'
+              height: 0,
+              paddingBottom: '56.25%',
+              overflow: 'hidden'
             }}
-          />
-        </div>
+          >
+            <img
+              src={video.thumbnail}
+              alt={video.title}
+              style={{
+                overflow: 'hidden',
+                width: '230px',
+                borderRadius: '6px',
+                position: 'absolute',
+                top: '50%',
+                left: 0,
+                transform: 'translateY(-50%)',
+                height: 'auto'
+              }}
+            />
+          </div>
+        ) : null}
         <p
           style={{
             color: 'var(--main-editor-text-color)',

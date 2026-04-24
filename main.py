@@ -1,20 +1,26 @@
+from __future__ import annotations
+
 import asyncio
 import base64
 import datetime
 import json
-import os
-import ssl
-import aiohttp
-import certifi
 import logging
+import os
 import platform
-import shutil
+import re
+import ssl
+
+import aiohttp
+import aiohttp.web
+import certifi
 
 import decky
 from settings import SettingsManager  # type: ignore
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+FILE_SERVER_PORT = 40510
 
 
 def get_ytdlp_path() -> str:
@@ -28,42 +34,100 @@ class Plugin:
     music_path = f"{decky.DECKY_PLUGIN_RUNTIME_DIR}/music"
     cache_path = f"{decky.DECKY_PLUGIN_RUNTIME_DIR}/cache"
     ssl_context = ssl.create_default_context(cafile=certifi.where())
+    file_server_runner: aiohttp.web.AppRunner | None = None
+    file_server_available: bool = False
+
+    async def _start_file_server(self):
+        os.makedirs(self.music_path, exist_ok=True)
+        try:
+            app = aiohttp.web.Application()
+            app.router.add_static("/music", self.music_path)
+            self.file_server_runner = aiohttp.web.AppRunner(app)
+            await self.file_server_runner.setup()
+            site = aiohttp.web.TCPSite(self.file_server_runner, "127.0.0.1", FILE_SERVER_PORT)
+            await site.start()
+            self.file_server_available = True
+            logger.info(f"File server started on http://127.0.0.1:{FILE_SERVER_PORT}")
+        except Exception as e:
+            logger.warning(f"File server failed to start, falling back to base64: {e}")
+            self.file_server_available = False
+
+    async def _stop_file_server(self):
+        if self.file_server_runner:
+            await self.file_server_runner.cleanup()
+            self.file_server_runner = None
 
     async def _main(self):
         logger.info("Initializing plugin...")
         self.settings = SettingsManager(
             name="config", settings_directory=decky.DECKY_PLUGIN_SETTINGS_DIR
         )
-        logger.info("Settings loaded.")
+        await self._start_file_server()
+        logger.info("Plugin initialized.")
 
     async def _unload(self):
+        await self._stop_file_server()
         if self.yt_process is not None and self.yt_process.returncode is None:
-            logger.info("Terminating yt_process...")
             self.yt_process.terminate()
             async with self.yt_process_lock:
                 try:
                     await asyncio.wait_for(self.yt_process.communicate(), timeout=5)
                 except TimeoutError:
-                    logger.warning("yt_process timeout. Killing process.")
                     self.yt_process.kill()
 
     async def set_setting(self, key, value):
-        logger.info(f"Setting config key: {key} = {value}")
         self.settings.setSetting(key, value)
 
     async def get_setting(self, key, default):
-        value = self.settings.getSetting(key, default)
-        logger.info(f"Retrieved config key: {key} = {value}")
-        return value
+        return self.settings.getSetting(key, default)
+
+    # --- Steam Store API ---
+
+    async def get_steam_soundtrack_name(self, app_id: str):
+        """Query Steam Store API for official soundtrack DLC name."""
+        try:
+            url = f"https://store.steampowered.com/api/appdetails?appids={app_id}"
+            async with aiohttp.ClientSession() as session:
+                res = await session.get(url, ssl=self.ssl_context, timeout=aiohttp.ClientTimeout(total=10))
+                if res.status != 200:
+                    return None
+                data = await res.json(content_type=None)
+                app_data = data.get(str(app_id), {})
+                if not app_data.get("success"):
+                    return None
+                dlcs = app_data.get("data", {}).get("dlc", [])
+                if not dlcs:
+                    return None
+                # Check each DLC to find one that's a soundtrack
+                for dlc_id in dlcs[:10]:
+                    dlc_url = f"https://store.steampowered.com/api/appdetails?appids={dlc_id}"
+                    dlc_res = await session.get(dlc_url, ssl=self.ssl_context, timeout=aiohttp.ClientTimeout(total=5))
+                    if dlc_res.status != 200:
+                        continue
+                    dlc_data = await dlc_res.json(content_type=None)
+                    dlc_info = dlc_data.get(str(dlc_id), {})
+                    if not dlc_info.get("success"):
+                        continue
+                    dlc_detail = dlc_info.get("data", {})
+                    dlc_type = dlc_detail.get("type", "")
+                    dlc_name = dlc_detail.get("name", "")
+                    # Steam marks soundtracks as type "music" or has "soundtrack" in name
+                    if dlc_type == "music" or "soundtrack" in dlc_name.lower():
+                        logger.info(f"Found Steam soundtrack DLC: {dlc_name}")
+                        return dlc_name
+                return None
+        except Exception as e:
+            logger.warning(f"Steam Store API lookup failed: {e}")
+            return None
+
+    # --- YouTube (yt-dlp) ---
 
     async def search_yt(self, term: str):
-        logger.info(f"Searching YouTube for: {term}")
         ytdlp_path = get_ytdlp_path()
         if os.path.exists(ytdlp_path):
             os.chmod(ytdlp_path, 0o755)
 
         if self.yt_process is not None and self.yt_process.returncode is None:
-            logger.info("Terminating previous yt_process...")
             self.yt_process.terminate()
             async with self.yt_process_lock:
                 await self.yt_process.communicate()
@@ -76,9 +140,8 @@ class Plugin:
             "--match-filters", f"duration<?{20*60}",
             stdout=asyncio.subprocess.PIPE,
             limit=10 * 1024**2,
-            env={**os.environ, 'LD_LIBRARY_PATH': '/usr/lib:/lib'},
+            env={**os.environ, 'LD_LIBRARY_PATH': '/usr/lib:/usr/lib64:/lib:/lib64'},
         )
-        logger.info("yt-dlp search process started.")
 
     async def next_yt_result(self):
         async with self.yt_process_lock:
@@ -87,9 +150,7 @@ class Plugin:
                 or not (output := self.yt_process.stdout)
                 or not (line := (await output.readline()).strip())
             ):
-                logger.info("No more results from yt_process.")
                 return None
-            logger.debug(f"Received result line: {line[:100]}...")
             entry = json.loads(line)
             return self.entry_to_info(entry)
 
@@ -102,27 +163,31 @@ class Plugin:
             "thumbnail": entry["thumbnail"],
         }
 
+    # --- Local file management ---
+
     def local_match(self, id: str) -> str | None:
-        logger.info(f"Looking for local match for ID: {id}")
         try:
             for file in os.listdir(self.music_path):
                 if os.path.isfile(os.path.join(self.music_path, file)) and file.startswith(id + "."):
-                    logger.info(f"Local match found: {file}")
                     return os.path.join(self.music_path, file)
         except FileNotFoundError:
-            logger.warning(f"Music path not found: {self.music_path}")
-        logger.info("No local match found.")
+            pass
         return None
+
+    def _local_url(self, filepath: str) -> str:
+        filename = os.path.basename(filepath)
+        return f"http://127.0.0.1:{FILE_SERVER_PORT}/music/{filename}"
 
     async def single_yt_url(self, id: str):
         local_match = self.local_match(id)
         if local_match:
+            if self.file_server_available:
+                return self._local_url(local_match)
+            # Fallback: base64 data URL
             extension = local_match.split(".")[-1]
-            logger.info(f"Serving base64 encoded audio from local file: {local_match}")
             with open(local_match, "rb") as file:
                 return f"data:audio/{extension};base64,{base64.b64encode(file.read()).decode()}"
 
-        logger.info(f"No local file. Fetching yt-dlp info for: {id}")
         ytdlp_path = get_ytdlp_path()
         result = await asyncio.create_subprocess_exec(
             ytdlp_path,
@@ -130,20 +195,16 @@ class Plugin:
             "-j",
             "-f", "bestaudio",
             stdout=asyncio.subprocess.PIPE,
-            env={**os.environ, 'LD_LIBRARY_PATH': '/usr/lib:/lib'},
+            env={**os.environ, 'LD_LIBRARY_PATH': '/usr/lib:/usr/lib64:/lib:/lib64'},
         )
         if result.stdout is None or not (output := (await result.stdout.read()).strip()):
-            logger.warning("yt-dlp returned no output.")
             return None
         entry = json.loads(output)
         return entry["url"]
 
     async def download_yt_audio(self, id: str):
         if self.local_match(id):
-            logger.info(f"Audio already downloaded for ID: {id}")
             return
-
-        logger.info(f"Downloading audio for ID: {id}")
         ytdlp_path = get_ytdlp_path()
         process = await asyncio.create_subprocess_exec(
             ytdlp_path,
@@ -151,18 +212,15 @@ class Plugin:
             "-f", "bestaudio",
             "-o", "%(id)s.%(ext)s",
             "-P", self.music_path,
-            env={**os.environ, 'LD_LIBRARY_PATH': '/usr/lib:/lib'},
+            env={**os.environ, 'LD_LIBRARY_PATH': '/usr/lib:/usr/lib64:/lib:/lib64'},
         )
         await process.communicate()
-
         original_path = os.path.join(self.music_path, f"{id}.m4a")
         renamed_path = os.path.join(self.music_path, f"{id}.webm")
         if os.path.exists(original_path):
-            logger.info(f"Renaming {original_path} to {renamed_path}")
             os.rename(original_path, renamed_path)
 
     async def download_url(self, url: str, id: str):
-        logger.info(f"Downloading file from URL: {url}")
         async with aiohttp.ClientSession() as session:
             res = await session.get(url, ssl=self.ssl_context)
             res.raise_for_status()
@@ -170,18 +228,17 @@ class Plugin:
             with open(file_path, "wb") as file:
                 async for chunk in res.content.iter_chunked(1024):
                     file.write(chunk)
-            logger.info(f"Download complete: {file_path}")
 
     async def clear_downloads(self):
-        logger.info("Clearing all downloaded music files...")
         try:
             for file in os.listdir(self.music_path):
                 full_path = os.path.join(self.music_path, file)
                 if os.path.isfile(full_path):
-                    logger.info(f"Removing file: {full_path}")
                     os.remove(full_path)
         except FileNotFoundError:
-            logger.warning(f"Music path not found: {self.music_path}")
+            pass
+
+    # --- Cache management ---
 
     async def export_cache(self, cache: dict):
         os.makedirs(self.cache_path, exist_ok=True)
@@ -189,10 +246,8 @@ class Plugin:
         full_path = os.path.join(self.cache_path, filename)
         with open(full_path, "w") as file:
             json.dump(cache, file)
-        logger.info(f"Cache exported to {full_path}")
 
     async def list_cache_backups(self):
-        logger.info("Listing cache backup files...")
         try:
             return [
                 file.rsplit(".", 1)[0]
@@ -200,18 +255,18 @@ class Plugin:
                 if os.path.isfile(os.path.join(self.cache_path, file))
             ]
         except FileNotFoundError:
-            logger.warning(f"Cache path not found: {self.cache_path}")
             return []
 
     async def import_cache(self, name: str):
-        path = os.path.join(self.cache_path, f"{name}.json")
-        logger.info(f"Importing cache from {path}")
+        safe_name = os.path.basename(name)
+        path = os.path.join(self.cache_path, f"{safe_name}.json")
         with open(path, "r") as file:
             return json.load(file)
 
+    # --- KHInsider ---
+
     async def search_khinsider(self, game_name: str):
         """Search KHInsider for game soundtracks by name."""
-        logger.info(f"Searching KHInsider for: {game_name}")
         search_url = "https://downloads.khinsider.com/search"
         try:
             async with aiohttp.ClientSession() as session:
@@ -219,12 +274,11 @@ class Plugin:
                     search_url,
                     params={"search": game_name},
                     ssl=self.ssl_context,
+                    timeout=aiohttp.ClientTimeout(total=10),
                 )
                 res.raise_for_status()
                 html = await res.text()
             results = []
-            # Parse search results table rows: <a href="/game-soundtracks/album/SLUG">NAME</a>
-            import re
             for match in re.finditer(
                 r'<a\s+href="(/game-soundtracks/album/[^"]+)"[^>]*>([^<]+)</a>',
                 html,
@@ -236,71 +290,144 @@ class Plugin:
                         "url": f"https://downloads.khinsider.com{album_path}",
                         "trackCount": 0,
                     })
-            logger.info(f"KHInsider found {len(results)} results")
             return results[:10]
         except Exception as e:
             logger.warning(f"KHInsider search failed: {e}")
             return []
 
     async def get_khinsider_track_url(self, album_url: str):
-        """Get the first playable track URL from a KHInsider album page.
-        Looks for 'Title', 'Main Theme', or 'Main Menu' tracks first, else first track."""
-        logger.info(f"Fetching KHInsider album: {album_url}")
+        """Get the best playable track URL from a KHInsider album page."""
+        tracks = await self._get_khinsider_tracks(album_url)
+        if not tracks:
+            return None
+        # Return the highest scored track
+        return tracks[0].get("audioUrl")
+
+    async def list_khinsider_tracks(self, album_url: str):
+        """List all tracks from a KHInsider album with resolved audio URLs."""
+        return await self._get_khinsider_tracks(album_url)
+
+    async def _get_khinsider_tracks(self, album_url: str):
+        """Internal: fetch and score all tracks from a KHInsider album."""
         try:
-            import re
             async with aiohttp.ClientSession() as session:
-                res = await session.get(album_url, ssl=self.ssl_context)
+                res = await session.get(
+                    album_url,
+                    ssl=self.ssl_context,
+                    timeout=aiohttp.ClientTimeout(total=10),
+                )
                 res.raise_for_status()
                 html = await res.text()
-            # Extract track links: <a href="/game-soundtracks/album/SLUG/TRACK.mp3">
-            track_links = re.findall(
-                r'<a\s+href="(/game-soundtracks/album/[^"]+\.mp3)"',
-                html,
-            )
-            if not track_links:
-                logger.info("No tracks found on album page")
-                return None
 
-            # Prefer theme-like tracks
-            preferred = None
-            for link in track_links:
-                lower = link.lower()
-                if any(
-                    kw in lower
-                    for kw in ["title", "main-theme", "main_theme", "menu", "opening", "intro"]
-                ):
-                    preferred = link
-                    break
-            chosen = preferred or track_links[0]
+                track_links = re.findall(
+                    r'<a\s+href="(/game-soundtracks/album/[^"]+\.mp3)"',
+                    html,
+                )
+                if not track_links:
+                    return []
 
-            # Fetch the track page to get the actual audio URL
-            track_page_url = f"https://downloads.khinsider.com{chosen}"
-            res2 = await session.get(track_page_url, ssl=self.ssl_context)
-            res2.raise_for_status()
-            track_html = await res2.text()
+                # Deduplicate (KHInsider lists each track link twice)
+                seen = set()
+                unique_links = []
+                for link in track_links:
+                    if link not in seen:
+                        seen.add(link)
+                        unique_links.append(link)
 
-            # Find the actual audio file link
-            audio_match = re.search(
-                r'<a\s+[^>]*href="(https://[^"]+\.mp3)"[^>]*>Click here to download',
-                track_html,
-            )
-            if audio_match:
-                audio_url = audio_match.group(1)
-                logger.info(f"KHInsider audio URL: {audio_url}")
-                return audio_url
-            logger.info("Could not extract audio URL from track page")
-            return None
+                def track_score(link: str, index: int) -> int:
+                    lower = link.lower()
+                    score = 0
+                    if "main-theme" in lower or "main_theme" in lower:
+                        score += 10
+                    if "title" in lower and "screen" in lower:
+                        score += 9
+                    if "title" in lower:
+                        score += 7
+                    if "theme" in lower:
+                        score += 6
+                    if "opening" in lower:
+                        score += 5
+                    if "menu" in lower:
+                        score += 4
+                    if "intro" in lower:
+                        score += 3
+                    # Track position bonus (early tracks are more likely themes)
+                    if index < 3:
+                        score += 2
+                    elif index > 15:
+                        score -= 1
+                    # Penalize non-theme tracks
+                    if "battle" in lower or "combat" in lower or "boss" in lower:
+                        score -= 3
+                    if "credits" in lower or "ending" in lower:
+                        score -= 2
+                    return score
+
+                def track_name(link: str) -> str:
+                    """Extract a readable name from the track URL."""
+                    from urllib.parse import unquote
+                    filename = link.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+                    name = unquote(unquote(filename))  # Double decode for double-encoded URLs
+                    name = name.replace("-", " ").replace("_", " ")
+                    # Strip leading track numbers like "01 " or "01. "
+                    name = re.sub(r"^\d{1,3}[\.\s]+", "", name).strip()
+                    return name if name else filename
+
+                tracks = []
+                for i, link in enumerate(unique_links):
+                    score = track_score(link, i)
+                    tracks.append({
+                        "name": track_name(link),
+                        "path": link,
+                        "score": score,
+                        "trackPageUrl": f"https://downloads.khinsider.com{link}",
+                    })
+
+                tracks.sort(key=lambda t: -t["score"])
+
+                # Resolve audio URL for top tracks (limit to avoid too many requests)
+                result = []
+                for track in tracks[:20]:
+                    try:
+                        res2 = await session.get(
+                            track["trackPageUrl"],
+                            ssl=self.ssl_context,
+                            timeout=aiohttp.ClientTimeout(total=10),
+                        )
+                        res2.raise_for_status()
+                        track_html = await res2.text()
+
+                        audio_match = re.search(
+                            r'<a\s+[^>]*href="(https://[^"]+\.mp3)"[^>]*>Click here to download',
+                            track_html,
+                        )
+                        audio_url = audio_match.group(1) if audio_match else None
+                        if not audio_url:
+                            fallback = re.search(
+                                r'href="(https://[^"]+\.(?:mp3|ogg|flac))"',
+                                track_html,
+                            )
+                            audio_url = fallback.group(1) if fallback else None
+
+                        if audio_url:
+                            result.append({
+                                "name": track["name"],
+                                "audioUrl": audio_url,
+                                "score": track["score"],
+                            })
+                    except Exception:
+                        continue
+
+                return result
         except Exception as e:
             logger.warning(f"KHInsider track fetch failed: {e}")
-            return None
+            return []
 
     async def clear_cache(self):
-        logger.info("Clearing all cache files...")
         try:
             for file in os.listdir(self.cache_path):
                 full_path = os.path.join(self.cache_path, file)
                 if os.path.isfile(full_path):
-                    logger.info(f"Removing file: {full_path}")
                     os.remove(full_path)
         except FileNotFoundError:
-            logger.warning(f"Cache path not found: {self.cache_path}")
+            pass

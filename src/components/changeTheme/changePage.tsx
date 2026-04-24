@@ -18,13 +18,17 @@ import { YouTubeVideoPreview } from '../../../types/YouTube'
 import NoMusic from './noMusic'
 import { getResolver } from '../../actions/audio'
 
+type SearchSource = 'youtube' | 'khinsider'
+
 export default function ChangePage({
   customSearch,
   currentSearch,
   setInitialSearch,
   handlePlay,
   loading,
-  videos
+  videos,
+  searchSource,
+  setSearchSource
 }: {
   videos: (YouTubeVideoPreview & { isPlaying: boolean })[]
   loading: boolean
@@ -32,6 +36,8 @@ export default function ChangePage({
   customSearch: (term: string) => void
   setInitialSearch: () => string
   currentSearch: string
+  searchSource: SearchSource
+  setSearchSource: (source: SearchSource) => void
 }) {
   const t = useTranslations()
   const { settings } = useSettings()
@@ -54,7 +60,7 @@ export default function ChangePage({
     videoId: string
     audioUrl: string
   }) {
-    if (settings.downloadAudio) {
+    if (settings.downloadAudio && !audio.videoId.startsWith('khi:')) {
       const success = await getResolver(settings.useYtDlp).downloadAudio({
         id: audio.videoId,
         url: audio.audioUrl
@@ -89,7 +95,7 @@ export default function ChangePage({
             }}
           >
             <form
-              onSubmit={(e) => {
+              onSubmit={(e: React.FormEvent) => {
                 e.preventDefault()
                 customSearch(searchTerm)
               }}
@@ -116,6 +122,48 @@ export default function ChangePage({
               {t('reset')}
             </DialogButton>
           </Focusable>
+        </PanelSectionRow>
+        <PanelSectionRow>
+          <Focusable
+            style={{
+              display: 'flex',
+              gap: '6px'
+            }}
+          >
+            <DialogButton
+              onClick={() => setSearchSource('youtube')}
+              style={{
+                background:
+                  searchSource === 'youtube'
+                    ? 'var(--gpColor-Blue)'
+                    : undefined,
+                padding: '8px 16px',
+                fontSize: '13px'
+              }}
+            >
+              YouTube
+            </DialogButton>
+            <DialogButton
+              onClick={() => setSearchSource('khinsider')}
+              style={{
+                background:
+                  searchSource === 'khinsider'
+                    ? 'var(--gpColor-Blue)'
+                    : undefined,
+                padding: '8px 16px',
+                fontSize: '13px'
+              }}
+            >
+              {t('gameOST')}
+            </DialogButton>
+          </Focusable>
+        </PanelSectionRow>
+        <PanelSectionRow>
+          <div style={{ fontSize: '11px', color: '#8b929a', padding: '0 4px' }}>
+            {searchSource === 'youtube'
+              ? t('youtubeSearchHint')
+              : t('khinsiderSearchHint')}
+          </div>
         </PanelSectionRow>
       </PanelSection>
       {loading && videos?.length === 0 ? (

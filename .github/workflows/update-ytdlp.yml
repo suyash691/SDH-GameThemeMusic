@@ -1,0 +1,60 @@
+name: Update yt-dlp
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Every Monday at 6am UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check for new yt-dlp release
+        id: check
+        run: |
+          CURRENT=$(python3 -c "import json; print(json.load(open('package.json'))['remote_binary'][0]['url'].split('/')[-2])")
+          LATEST=$(curl -s https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest | python3 -c "import json,sys; print(json.load(sys.stdin)['tag_name'])")
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          if [ "$CURRENT" != "$LATEST" ]; then
+            echo "update=true" >> $GITHUB_OUTPUT
+          else
+            echo "update=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update package.json
+        if: steps.check.outputs.update == 'true'
+        run: |
+          LATEST=${{ steps.check.outputs.latest }}
+          URL="https://github.com/yt-dlp/yt-dlp/releases/download/${LATEST}/yt-dlp"
+          HASH=$(curl -sL "https://github.com/yt-dlp/yt-dlp/releases/download/${LATEST}/SHA2-256SUMS" | grep "^[a-f0-9]* *yt-dlp$" | cut -d' ' -f1)
+          python3 -c "
+          import json
+          with open('package.json', 'r') as f:
+              data = json.load(f)
+          data['remote_binary'][0]['url'] = '${URL}'
+          data['remote_binary'][0]['sha256hash'] = '${HASH}'
+          with open('package.json', 'w') as f:
+              json.dump(data, f, indent=2)
+              f.write('\n')
+          "
+          echo "Updated yt-dlp from ${{ steps.check.outputs.current }} to ${LATEST}"
+
+      - name: Create Pull Request
+        if: steps.check.outputs.update == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "Update yt-dlp to ${{ steps.check.outputs.latest }}"
+          title: "Update yt-dlp to ${{ steps.check.outputs.latest }}"
+          body: |
+            Automated yt-dlp update from `${{ steps.check.outputs.current }}` to `${{ steps.check.outputs.latest }}`.
+
+            [Release notes](https://github.com/yt-dlp/yt-dlp/releases/tag/${{ steps.check.outputs.latest }})
+          branch: update-yt-dlp
+          delete-branch: true

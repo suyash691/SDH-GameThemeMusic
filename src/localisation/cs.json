@@ -60,5 +60,12 @@
     "useYtDlp": "Use yt-dlp",
     "useYtDlpDescription": "Access YouTube directly without Invidious",
     "volume": "Music Volume",
-    "volumeDescription": "Adjust music volume"
+    "volumeDescription": "Adjust music volume",
+    "customInvidiousInstance": "Použijte vlastní instanci",
+    "customInvidiousInstanceDescription": "Místo vybírání ze seznamu zadejte svou vlastní adresu URL instance Invidious",
+    "customInvidiousUrl": "Adresa URL instance",
+    "customInvidiousUrlDescription": "např.https://invidious.example.com",
+    "gameOST": "Hra OST",
+    "khinsiderSearchHint": "Vyhledá databázi soundtracků hry podle přesného názvu",
+    "youtubeSearchHint": "Podle potřeby upravte výše uvedené vyhledávací dotazy"
 }

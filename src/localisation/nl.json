@@ -60,5 +60,12 @@
     "useYtDlp": "Use yt-dlp",
     "useYtDlpDescription": "Access YouTube directly without Invidious",
     "volume": "Muziek Volume",
-    "volumeDescription": "Muziekvolume aanpassen"
+    "volumeDescription": "Muziekvolume aanpassen",
+    "customInvidiousInstance": "Gebruik een aangepast exemplaar",
+    "customInvidiousInstanceDescription": "Voer uw eigen Invidious-instantie-URL in in plaats van uit de lijst te kiezen",
+    "customInvidiousUrl": "Instantie-URL",
+    "customInvidiousUrlDescription": "bijv.https://invidious.example.com",
+    "gameOST": "Spel OST",
+    "khinsiderSearchHint": "Zoekt de soundtrackdatabase van games op exacte naam",
+    "youtubeSearchHint": "Bewerk indien nodig de bovenstaande zoektermen"
 }

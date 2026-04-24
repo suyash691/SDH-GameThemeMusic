@@ -60,5 +60,12 @@
     "useYtDlp": "Use yt-dlp",
     "useYtDlpDescription": "Access YouTube directly without Invidious",
     "volume": "Music Volume",
-    "volumeDescription": "Adjust music volume"
+    "volumeDescription": "Adjust music volume",
+    "customInvidiousInstance": "Χρησιμοποιήστε προσαρμοσμένη παρουσία",
+    "customInvidiousInstanceDescription": "Εισαγάγετε τη δική σας διεύθυνση URL παρουσίας Invidious αντί να επιλέξετε από τη λίστα",
+    "customInvidiousUrl": "URL παρουσίας",
+    "customInvidiousUrlDescription": "π.χ.https://invidious.example.com",
+    "gameOST": "Παιχνίδι OST",
+    "khinsiderSearchHint": "Αναζητά τη βάση δεδομένων ήχου του παιχνιδιού με το ακριβές όνομα",
+    "youtubeSearchHint": "Επεξεργαστείτε τους παραπάνω όρους αναζήτησης όπως απαιτείται"
 }

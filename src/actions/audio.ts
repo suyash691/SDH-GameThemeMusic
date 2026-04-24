@@ -20,6 +20,13 @@ const searchKhinsider = callable<[string], KHInsiderResult[]>(
 const getKhinsiderTrackUrl = callable<[string], string | null>(
   'get_khinsider_track_url'
 )
+const listKhinsiderTracks = callable<
+  [string],
+  { name: string; audioUrl: string; score: number }[]
+>('list_khinsider_tracks')
+const getSteamSoundtrackName = callable<[string], string | null>(
+  'get_steam_soundtrack_name'
+)
 
 export type KHInsiderResult = {
   name: string
@@ -39,9 +46,7 @@ abstract class AudioResolver {
   async getAudio(
     appName: string
   ): Promise<{ videoId: string; audioUrl: string } | undefined> {
-    const videos = this.getYouTubeSearchResults(
-      `"${appName}" official soundtrack main theme`
-    )
+    const videos = this.getYouTubeSearchResults(`${appName} theme music OST`)
     for await (const video of videos) {
       const audioUrl = await this.getAudioUrlFromVideo(video)
       if (audioUrl?.length) {
@@ -86,9 +91,7 @@ class InvidiousAudioResolver extends AudioResolver {
     return
   }
 
-  async getAudioUrlFromVideo(
-    video: YouTubeVideo
-  ): Promise<string | undefined> {
+  async getAudioUrlFromVideo(video: YouTubeVideo): Promise<string | undefined> {
     try {
       const endpoint = await this.getEndpoint()
       const res = await fetch(
@@ -148,15 +151,10 @@ class YtDlpAudioResolver extends AudioResolver {
     return
   }
 
-  async getAudioUrlFromVideo(
-    video: YouTubeVideo
-  ): Promise<string | undefined> {
-    if (video.url) {
-      return video.url
-    } else {
-      const result = await singleYtUrl(video.id)
-      return result || undefined
-    }
+  async getAudioUrlFromVideo(video: YouTubeVideo): Promise<string | undefined> {
+    // Always get a fresh URL — search result URLs expire quickly
+    const result = await singleYtUrl(video.id)
+    return result || video.url || undefined
   }
 
   async downloadAudio(video: YouTubeVideo): Promise<boolean> {
@@ -193,27 +191,61 @@ export async function getKHInsiderTrackAudioUrl(
   }
 }
 
-// Tiered auto-resolve: KHInsider first, then YouTube fallback
+export async function listKHInsiderTracks(
+  albumUrl: string
+): Promise<{ name: string; audioUrl: string; score: number }[]> {
+  try {
+    return await listKhinsiderTracks(albumUrl)
+  } catch (e) {
+    console.debug('KHInsider track list failed:', e)
+    return []
+  }
+}
+
+// Tiered auto-resolve: Steam Store → KHInsider → YouTube
 export async function autoResolveThemeMusic(
   appName: string,
+  appId: number,
   useYtDlp: boolean
 ): Promise<{ videoId: string; audioUrl: string } | undefined> {
-  // Tier 1: Try KHInsider for a direct soundtrack match
+  // Tier 1: Steam Store soundtrack DLC → targeted KHInsider search
+  try {
+    const soundtrackName = await getSteamSoundtrackName(appId.toString())
+    if (soundtrackName) {
+      // Try the full DLC name first, then just the game name on KHInsider
+      const results = await searchKHInsider(soundtrackName)
+      if (results.length > 0) {
+        const trackUrl = await getKHInsiderTrackAudioUrl(results[0].url)
+        if (trackUrl) {
+          return { videoId: `khi:${trackUrl}`, audioUrl: trackUrl }
+        }
+      }
+    }
+  } catch (e) {
+    console.debug('Steam Store + KHInsider lookup failed:', e)
+  }
+
+  // Tier 2: KHInsider search by game name (no extra terms)
   try {
     const results = await searchKHInsider(appName)
     if (results.length > 0) {
       const trackUrl = await getKHInsiderTrackAudioUrl(results[0].url)
       if (trackUrl) {
-        return { videoId: `khi:${results[0].url}`, audioUrl: trackUrl }
+        return { videoId: `khi:${trackUrl}`, audioUrl: trackUrl }
       }
     }
   } catch (e) {
-    console.debug('KHInsider auto-resolve failed, falling back to YouTube:', e)
+    console.debug('KHInsider auto-resolve failed:', e)
   }
 
-  // Tier 2: YouTube fallback
-  const resolver = getResolver(useYtDlp)
-  return resolver.getAudio(appName)
+  // Tier 3: YouTube fallback (append "theme music" for better results)
+  try {
+    const resolver = getResolver(useYtDlp)
+    return await resolver.getAudio(appName)
+  } catch (e) {
+    console.debug('YouTube auto-resolve failed:', e)
+    return undefined
+  }
 }
 
 export function getResolver(useYtDlp: boolean): AudioResolver {

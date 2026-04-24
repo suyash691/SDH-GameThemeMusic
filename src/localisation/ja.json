@@ -60,5 +60,12 @@
     "useYtDlp": "Use yt-dlp",
     "useYtDlpDescription": "Access YouTube directly without Invidious",
     "volume": "音量",
-    "volumeDescription": "音量調整"
+    "volumeDescription": "音量調整",
+    "customInvidiousInstance": "カスタムインスタンスを使用する",
+    "customInvidiousInstanceDescription": "リストから選択するのではなく、独自の Invidious インスタンス URL を入力します",
+    "customInvidiousUrl": "インスタンスURL",
+    "customInvidiousUrlDescription": "例えばhttps://invidious.example.com",
+    "gameOST": "ゲームOST",
+    "khinsiderSearchHint": "ゲームサウンドトラックデータベースを正確な名前で検索します",
+    "youtubeSearchHint": "必要に応じて上記の検索語を編集します"
 }

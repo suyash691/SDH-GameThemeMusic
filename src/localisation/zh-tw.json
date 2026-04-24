@@ -60,5 +60,12 @@
     "useYtDlp": "Use yt-dlp",
     "useYtDlpDescription": "Access YouTube directly without Invidious",
     "volume": "音樂音量",
-    "volumeDescription": "調整音樂音量"
+    "volumeDescription": "調整音樂音量",
+    "customInvidiousInstance": "使用自訂實例",
+    "customInvidiousInstanceDescription": "輸入您自己的 Invidious 實例 URL，而不是從清單中選擇",
+    "customInvidiousUrl": "實例網址",
+    "customInvidiousUrlDescription": "例如https://invidious.example.com",
+    "gameOST": "遊戲原聲帶",
+    "khinsiderSearchHint": "以確切名稱搜尋遊戲配樂資料庫",
+    "youtubeSearchHint": "根據需要編輯上面的搜尋字詞"
 }

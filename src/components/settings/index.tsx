@@ -15,8 +15,8 @@ import {
   TextField,
   ToggleField
 } from '@decky/ui'
-import { useMemo, useState } from 'react'
-import { SiCrowdin, SiDiscord, SiGithub, SiKofi } from "react-icons/si";
+import { useEffect, useMemo, useState } from 'react'
+import { SiDiscord, SiGithub } from 'react-icons/si'
 import { useSettings } from '../../hooks/useSettings'
 import useTranslations from '../../hooks/useTranslations'
 import {
@@ -25,7 +25,7 @@ import {
   FaSave,
   FaVolumeMute,
   FaVolumeUp,
-  FaYoutube,
+  FaYoutube
 } from 'react-icons/fa'
 import {
   clearCache,
@@ -55,13 +55,21 @@ export default function Index() {
 
   const { instances, instancesLoading } = useInvidiousInstances()
 
-  const isCustomUrl = !instances.some(
-    (ins) => ins.url === settings.invidiousInstance
-  )
-  const [useCustomInstance, setUseCustomInstance] = useState(isCustomUrl)
-  const [customInstanceUrl, setCustomInstanceUrl] = useState(
-    isCustomUrl ? settings.invidiousInstance : ''
-  )
+  const [useCustomInstance, setUseCustomInstance] = useState(false)
+  const [customInstanceUrl, setCustomInstanceUrl] = useState('')
+
+  // Once instances load, detect if current setting is custom
+  useEffect(() => {
+    if (!instancesLoading && instances.length > 0) {
+      const isCustom = !instances.some(
+        (ins) => ins.url === settings.invidiousInstance
+      )
+      setUseCustomInstance(isCustom)
+      if (isCustom) {
+        setCustomInstanceUrl(settings.invidiousInstance)
+      }
+    }
+  }, [instancesLoading, instances, settings.invidiousInstance])
 
   const instanceOptions = useMemo<SingleDropdownOption[]>(
     () =>
@@ -223,7 +231,12 @@ export default function Index() {
                 checked={useCustomInstance}
                 label={t('customInvidiousInstance')}
                 description={t('customInvidiousInstanceDescription')}
-                onChange={(newVal: boolean) => setUseCustomInstance(newVal)}
+                onChange={(newVal: boolean) => {
+                  setUseCustomInstance(newVal)
+                  if (!newVal && instances.length > 0) {
+                    setInvidiousInstance(instances[0].url)
+                  }
+                }}
               />
             </PanelSectionRow>
             {useCustomInstance ? (
@@ -350,10 +363,18 @@ export default function Index() {
         </PanelSectionRow>
       </PanelSection>
       <PanelSection title={t('extras')}>
-        <PanelSocialButton icon={<SiKofi fill="#FF5E5B" />} url="https://ko-fi.com/OMGDuke">Ko-fi</PanelSocialButton>
-        <PanelSocialButton icon={<SiDiscord fill="#5865F2" />} url="https://deckbrew.xyz/discord">Discord</PanelSocialButton>
-        <PanelSocialButton icon={<SiGithub fill="#f5f5f5" />} url="https://github.com/OMGDuke/SDH-GameThemeMusic/">Github</PanelSocialButton>
-        <PanelSocialButton icon={<SiCrowdin fill="#FFFFFF" />} url="https://crowdin.com/project/sdh-gamethememusic">{t('helpTranslate')}</PanelSocialButton>
+        <PanelSocialButton
+          icon={<SiDiscord fill="#5865F2" />}
+          url="https://deckbrew.xyz/discord"
+        >
+          Discord
+        </PanelSocialButton>
+        <PanelSocialButton
+          icon={<SiGithub fill="#f5f5f5" />}
+          url="https://github.com/suyash691/SDH-GameThemeMusic/"
+        >
+          Github
+        </PanelSocialButton>
       </PanelSection>
     </div>
   )

@@ -1,0 +1,8 @@
+[run]
+source = .
+omit = tests/*, src/__tests__/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__

@@ -60,5 +60,12 @@
     "useYtDlp": "Use yt-dlp",
     "useYtDlpDescription": "Access YouTube directly without Invidious",
     "volume": "Musiikin äänenvoimakkuus",
-    "volumeDescription": "Säädä musiikin äänenvoimakkuutta"
+    "volumeDescription": "Säädä musiikin äänenvoimakkuutta",
+    "customInvidiousInstance": "Käytä mukautettua esiintymää",
+    "customInvidiousInstanceDescription": "Anna oma Invidious-esiintymän URL-osoite luettelosta poimimisen sijaan",
+    "customInvidiousUrl": "Esineen URL-osoite",
+    "customInvidiousUrlDescription": "esim.https://invidious.example.com",
+    "gameOST": "Peli OST",
+    "khinsiderSearchHint": "Hakee pelin ääniraitatietokannasta tarkan nimen mukaan",
+    "youtubeSearchHint": "Muokkaa yllä olevia hakusanoja tarpeen mukaan"
 }

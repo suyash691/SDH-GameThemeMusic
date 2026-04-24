@@ -4,24 +4,69 @@ on:
   push:
     tags:
       - 'v*'
+    branches: ['main']
   pull_request:
     branches: ['main']
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22.x'
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v5
+        with:
+          version: 9
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Install Dependencies
+        run: |
+          pnpm install
+          pip install pytest pytest-asyncio pytest-cov aiohttp certifi
+
+      - name: Check formatting
+        run: npx prettier --check "src/**/*.{ts,tsx}"
+
+      - name: Run backend tests with coverage
+        run: python -m pytest tests/ --cov=main --cov-report=xml:coverage-backend.xml -v
+
+      - name: Run frontend tests with coverage
+        run: npx vitest run --coverage --coverage.reporter=text --coverage.reporter=lcov
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v6
+        with:
+          files: coverage-backend.xml,coverage/lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+        continue-on-error: true
 
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20.x'
+          node-version: '22.x'
 
       - name: Setup PNPM
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
         with:
           version: 9
 
@@ -40,35 +85,37 @@ jobs:
       - name: Build plugin
         run: |
           $(pwd)/cli/decky plugin build $(pwd)
-          unzip "out/Game Theme Music.zip" -d "out/Game Theme Music"
+          echo "=== Zip contents ==="
+          unzip -l "out/Game Theme Music.zip"
+
+      - name: Extract and upload
+        run: unzip "out/Game Theme Music.zip" -d "out/extracted"
 
       - name: Upload package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: SDH-GameThemeMusic
-          path: |
-            ./out/Game Theme Music/*
+          path: out/extracted/
 
   release:
-    needs: build
+    needs: [test, build]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: SDH-GameThemeMusic
-          path: SDH-GameThemeMusic
+          path: out
 
-      - name: zip/tar release
+      - name: Create release archives
         run: |
-          zip -r SDH-GameThemeMusic.zip SDH-GameThemeMusic/*
-          tar -czvf SDH-GameThemeMusic.tar.gz SDH-GameThemeMusic
+          cd out
+          zip -r "../Game Theme Music.zip" "Game Theme Music"
+          tar -czvf "../Game Theme Music.tar.gz" "Game Theme Music"
 
       - name: Create a release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: 'SDH-GameThemeMusic.zip,SDH-GameThemeMusic.tar.gz'
+          artifacts: 'Game Theme Music.zip,Game Theme Music.tar.gz'
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}

@@ -4,10 +4,16 @@ import { useEffect, useState } from 'react'
 import useTranslations from '../../hooks/useTranslations'
 import ChangePage from './changePage'
 import AboutPage from './aboutPage'
-import { getResolver } from '../../actions/audio'
+import {
+  getResolver,
+  searchKHInsider,
+  listKHInsiderTracks
+} from '../../actions/audio'
 import { YouTubeVideoPreview } from '../../../types/YouTube'
 import GameSettings from './gameSettings'
 import { useSettings } from '../../hooks/useSettings'
+
+type SearchSource = 'youtube' | 'khinsider'
 
 export default function ChangeTheme() {
   const [currentTab, setCurrentTab] = useState<string>('change-music-tab')
@@ -21,21 +27,58 @@ export default function ChangeTheme() {
     (YouTubeVideoPreview & { isPlaying: boolean })[]
   >([])
   const [loadingNum, setLoadingNum] = useState(0)
-  const initialSearch = appName?.concat(' Theme Music') ?? ''
-  const [searchTerm, setSearchTerm] = useState(initialSearch)
+  const initialSearch = appName ?? ''
+  const [searchTerm, setSearchTerm] = useState(
+    initialSearch + ' theme music OST'
+  )
+  const [searchSource, setSearchSource] = useState<SearchSource>('youtube')
+
   useEffect(() => {
     let ignore = false
     async function getData() {
       setLoadingNum((x) => x + 1)
       setVideos([])
-      const resolver = getResolver(settings.useYtDlp)
-      const res = resolver.getYouTubeSearchResults(searchTerm)
-      for await (const video of res) {
-        if (ignore) {
-          break
+
+      if (searchSource === 'khinsider') {
+        const albums = await searchKHInsider(searchTerm)
+        // Collect tracks from top 3 albums, then sort globally by score
+        const allTracks: {
+          albumName: string
+          name: string
+          audioUrl: string
+          score: number
+        }[] = []
+        for (const album of albums.slice(0, 3)) {
+          if (ignore) break
+          const tracks = await listKHInsiderTracks(album.url)
+          for (const track of tracks) {
+            allTracks.push({ albumName: album.name, ...track })
+          }
         }
-        setVideos((oldVideos) => [...oldVideos, { isPlaying: false, ...video }])
+        // Sort by score descending — best tracks from any album first
+        allTracks.sort((a, b) => b.score - a.score)
+        for (const track of allTracks) {
+          if (ignore) break
+          setVideos((old) => [
+            ...old,
+            {
+              isPlaying: false,
+              id: `khi:${track.audioUrl}`,
+              title: `${track.albumName} — ${track.name}`,
+              thumbnail: '',
+              url: track.audioUrl
+            }
+          ])
+        }
+      } else {
+        const resolver = getResolver(settings.useYtDlp)
+        const res = resolver.getYouTubeSearchResults(searchTerm)
+        for await (const video of res) {
+          if (ignore) break
+          setVideos((old) => [...old, { isPlaying: false, ...video }])
+        }
       }
+
       setLoadingNum((x) => x - 1)
     }
     if (searchTerm.length > 0 && !settingsLoading) {
@@ -44,21 +87,31 @@ export default function ChangeTheme() {
     return () => {
       ignore = true
     }
-  }, [searchTerm, settingsLoading])
+  }, [searchTerm, settingsLoading, searchSource])
 
   function handlePlay(index: number, startPlay: boolean) {
-    setVideos((oldVideos) => {
-      const newVideos = oldVideos.map((v, vIndex) => ({
+    setVideos((oldVideos) =>
+      oldVideos.map((v, i) => ({
         ...v,
-        isPlaying: vIndex === index ? startPlay : false
+        isPlaying: i === index ? startPlay : false
       }))
-      return newVideos
-    })
+    )
   }
 
   function setInitialSearch() {
-    setSearchTerm(initialSearch)
-    return initialSearch
+    const term =
+      searchSource === 'youtube'
+        ? `${initialSearch} theme music OST`
+        : initialSearch
+    setSearchTerm(term)
+    return term
+  }
+
+  function handleSourceChange(source: SearchSource) {
+    setSearchSource(source)
+    const term =
+      source === 'youtube' ? `${initialSearch} theme music OST` : initialSearch
+    setSearchTerm(term)
   }
 
   return (
@@ -83,6 +136,8 @@ export default function ChangeTheme() {
                 customSearch={setSearchTerm}
                 currentSearch={searchTerm}
                 setInitialSearch={setInitialSearch}
+                searchSource={searchSource}
+                setSearchSource={handleSourceChange}
               />
             ),
             id: 'change-music-tab'

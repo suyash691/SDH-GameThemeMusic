@@ -60,5 +60,12 @@
     "useYtDlp": "Use yt-dlp",
     "useYtDlpDescription": "Access YouTube directly without Invidious",
     "volume": "Гучність Музики",
-    "volumeDescription": "Регулювання гучності музики"
+    "volumeDescription": "Регулювання гучності музики",
+    "customInvidiousInstance": "Використовуйте спеціальний екземпляр",
+    "customInvidiousInstanceDescription": "Введіть власну URL-адресу примірника Invidious замість вибору зі списку",
+    "customInvidiousUrl": "URL екземпляра",
+    "customInvidiousUrlDescription": "напр.https://invidious.example.com",
+    "gameOST": "Гра OST",
+    "khinsiderSearchHint": "Пошук в базі саундтреків гри за точною назвою",
+    "youtubeSearchHint": "За потреби відредагуйте пошукові терміни вище"
 }

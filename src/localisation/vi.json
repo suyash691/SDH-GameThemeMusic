@@ -60,5 +60,12 @@
     "useYtDlp": "Use yt-dlp",
     "useYtDlpDescription": "Access YouTube directly without Invidious",
     "volume": "Music Volume",
-    "volumeDescription": "Adjust music volume"
+    "volumeDescription": "Adjust music volume",
+    "customInvidiousInstance": "Sử dụng phiên bản tùy chỉnh",
+    "customInvidiousInstanceDescription": "Nhập URL phiên bản Invidious của riêng bạn thay vì chọn từ danh sách",
+    "customInvidiousUrl": "URL phiên bản",
+    "customInvidiousUrlDescription": "ví dụ.https://invidious.example.com",
+    "gameOST": "OST trò chơi",
+    "khinsiderSearchHint": "Tìm kiếm cơ sở dữ liệu nhạc phim trò chơi theo tên chính xác",
+    "youtubeSearchHint": "Chỉnh sửa cụm từ tìm kiếm ở trên nếu cần"
 }

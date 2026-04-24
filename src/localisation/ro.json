@@ -60,5 +60,12 @@
     "useYtDlp": "Use yt-dlp",
     "useYtDlpDescription": "Access YouTube directly without Invidious",
     "volume": "Music Volume",
-    "volumeDescription": "Adjust music volume"
+    "volumeDescription": "Adjust music volume",
+    "customInvidiousInstance": "Utilizați o instanță personalizată",
+    "customInvidiousInstanceDescription": "Introduceți propria adresă URL a instanței Invidious în loc să alegeți din listă",
+    "customInvidiousUrl": "Adresa URL a instanței",
+    "customInvidiousUrlDescription": "de ex.https://invidious.example.com",
+    "gameOST": "OST joc",
+    "khinsiderSearchHint": "Caută baza de date a coloanei sonore a jocului după numele exact",
+    "youtubeSearchHint": "Editați termenii de căutare de mai sus după cum este necesar"
 }
