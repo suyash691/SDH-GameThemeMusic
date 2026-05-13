@@ -4,6 +4,7 @@ import { autoResolveThemeMusic, getResolver } from '../actions/audio'
 
 import { getCache, updateCache } from '../cache/musicCache'
 import { useSettings } from '../hooks/useSettings'
+import { isKhiTrack, extractKhiUrl, shouldAutoResolve } from '../utils'
 
 const useThemeMusic = (appId: number) => {
   const { settings, isLoading: settingsLoading } = useSettings()
@@ -31,8 +32,8 @@ const useThemeMusic = (appId: number) => {
       // User has a cached override — try to resolve its audio URL
       if (cache?.videoId?.length) {
         // KHInsider tracks store the direct audio URL after khi: prefix
-        if (cache.videoId.startsWith('khi:')) {
-          const audioUrl = cache.videoId.slice(4)
+        if (isKhiTrack(cache.videoId)) {
+          const audioUrl = extractKhiUrl(cache.videoId)
           return setAudio({ videoId: cache.videoId, audioUrl })
         }
         // Try resolving the cached YouTube video ID
@@ -50,7 +51,7 @@ const useThemeMusic = (appId: number) => {
       }
 
       // Default muted — don't auto-play
-      if (settings.defaultMuted && !cache?.videoId?.length) {
+      if (!shouldAutoResolve(settings.defaultMuted, cache?.videoId)) {
         return setAudio({ videoId: '', audioUrl: '' })
       }
 

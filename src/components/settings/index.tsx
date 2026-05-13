@@ -39,6 +39,7 @@ import useInvidiousInstances from '../../hooks/useInvidiousInstances'
 import { toaster } from '@decky/api'
 import { getResolver } from '../../actions/audio'
 import PanelSocialButton from './socialButton'
+import { isCustomInstance } from '../../utils'
 
 export default function Index() {
   const {
@@ -61,11 +62,9 @@ export default function Index() {
   // Once instances load, detect if current setting is custom
   useEffect(() => {
     if (!instancesLoading && instances.length > 0) {
-      const isCustom = !instances.some(
-        (ins) => ins.url === settings.invidiousInstance
-      )
-      setUseCustomInstance(isCustom)
-      if (isCustom) {
+      const custom = isCustomInstance(instances, instancesLoading, settings.invidiousInstance)
+      setUseCustomInstance(custom)
+      if (custom) {
         setCustomInstanceUrl(settings.invidiousInstance)
       }
     }

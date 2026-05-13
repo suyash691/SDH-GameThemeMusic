@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import localforage from 'localforage'
 import {
   updateCache,
@@ -27,27 +27,23 @@ describe('When user navigates to a game page', () => {
     vi.mocked(localforage.getItem).mockResolvedValueOnce(null)
     const cache = await getCache(99999)
     expect(cache).toBeNull()
+    expect(localforage.getItem).toHaveBeenCalledWith('99999')
   })
 
-  it('should auto-resolve music when no cache exists and defaultMuted is off', async () => {
-    // autoResolveThemeMusic should be called, trying all tiers
-    const result = await autoResolveThemeMusic('Test Game', 12345, true)
-    // All mocked sources return nothing, so result is undefined
+  it('should auto-resolve music when no cache exists', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      status: 200,
+      json: async () => []
+    }) as unknown as typeof fetch
+
+    const result = await autoResolveThemeMusic('Test Game', 12345, false)
     expect(result).toBeUndefined()
+    // Verify it attempted to search (fetch was called for Invidious search)
+    expect(globalThis.fetch).toHaveBeenCalled()
   })
 
-  it('should NOT auto-resolve when defaultMuted is on and no cache exists', () => {
-    const settings = { ...defaultSettings, defaultMuted: true }
-    const hasCache = false
-    const shouldAutoResolve = !settings.defaultMuted && !hasCache
-    expect(shouldAutoResolve).toBe(false)
-  })
-
-  it('should still play cached track even when defaultMuted is on', () => {
-    const settings = { ...defaultSettings, defaultMuted: true }
-    const cache = { videoId: 'manual_pick' }
-    const shouldPlay = (cache.videoId?.length ?? 0) > 0
-    expect(shouldPlay).toBe(true)
+  afterEach(() => {
+    globalThis.fetch = undefined as unknown as typeof fetch
   })
 })
 
@@ -75,6 +71,10 @@ describe('When user selects a track for a game', () => {
 
     const result = await updateCache(292030, { videoId: 'new_track' })
     expect(result).toEqual({ videoId: 'new_track', volume: 0.5 })
+    expect(localforage.setItem).toHaveBeenCalledWith('292030', {
+      videoId: 'new_track',
+      volume: 0.5
+    })
   })
 
   it('should allow selecting "No Music" with empty videoId', async () => {
@@ -83,16 +83,30 @@ describe('When user selects a track for a game', () => {
 
     const result = await updateCache(292030, { videoId: '' })
     expect(result.videoId).toBe('')
+    expect(localforage.setItem).toHaveBeenCalled()
   })
 })
 
 // ─── Scenario: Music source resolution tiers ───
 
 describe('When plugin auto-resolves theme music', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      status: 200,
+      json: async () => []
+    }) as unknown as typeof fetch
+  })
+
+  afterEach(() => {
+    globalThis.fetch = undefined as unknown as typeof fetch
+  })
+
   it('should try Steam Store → KHInsider → YouTube in order', async () => {
-    // All mocked to return nothing, verifying graceful fallthrough
     const result = await autoResolveThemeMusic('Nonexistent Game', 99999, false)
     expect(result).toBeUndefined()
+    // Verify fetch was called (Invidious search as final fallback)
+    expect(globalThis.fetch).toHaveBeenCalled()
   })
 
   it('should use different YouTube resolvers based on useYtDlp setting', () => {
@@ -100,78 +114,12 @@ describe('When plugin auto-resolves theme music', () => {
     const invidious = getResolver(false)
     expect(ytdlp.constructor.name).not.toBe(invidious.constructor.name)
   })
-
-  it('should prefix KHInsider results with khi: in videoId', () => {
-    const khiResult = {
-      videoId:
-        'khi:https://downloads.khinsider.com/game-soundtracks/album/zelda',
-      audioUrl: 'https://cdn.example.com/zelda-title.mp3'
-    }
-    expect(khiResult.videoId.startsWith('khi:')).toBe(true)
-  })
-
-  it('should extract audio URL from khi: prefixed videoId in cache', () => {
-    const cached = { videoId: 'khi:https://downloads.khinsider.com/album/halo' }
-    const isKhi = cached.videoId.startsWith('khi:')
-    const albumUrl = cached.videoId.slice(4)
-    expect(isKhi).toBe(true)
-    expect(albumUrl).toBe('https://downloads.khinsider.com/album/halo')
-  })
-})
-
-// ─── Scenario: User searches with YouTube vs KHInsider toggle ───
-
-describe('When user toggles search source', () => {
-  it('YouTube should be the default search source', () => {
-    const defaultSource: 'youtube' | 'khinsider' = 'youtube'
-    expect(defaultSource).toBe('youtube')
-  })
-
-  it('KHInsider downloads should be skipped (direct URLs)', () => {
-    const videoId = 'khi:https://downloads.khinsider.com/album/test'
-    const shouldSkipDownload = videoId.startsWith('khi:')
-    expect(shouldSkipDownload).toBe(true)
-  })
-
-  it('YouTube downloads should NOT be skipped', () => {
-    const videoId = 'dQw4w9WgXcQ'
-    const shouldSkipDownload = videoId.startsWith('khi:')
-    expect(shouldSkipDownload).toBe(false)
-  })
 })
 
 // ─── Scenario: User adjusts volume ───
 
 describe('When user adjusts volume', () => {
-  it('per-game volume should override global volume', () => {
-    const globalVol = 0.8
-    const perGameVol = 0.3
-    const effective =
-      typeof perGameVol === 'number' && isFinite(perGameVol)
-        ? perGameVol
-        : globalVol
-    expect(effective).toBe(0.3)
-  })
-
-  it('should fall back to global when per-game is not set', () => {
-    const globalVol = 0.8
-    const perGameVol = undefined
-    const effective =
-      typeof perGameVol === 'number' && isFinite(perGameVol)
-        ? perGameVol
-        : globalVol
-    expect(effective).toBe(0.8)
-  })
-
-  it('should handle NaN per-game volume gracefully', () => {
-    const globalVol = 0.8
-    const perGameVol = NaN
-    const effective =
-      typeof perGameVol === 'number' && isFinite(perGameVol)
-        ? perGameVol
-        : globalVol
-    expect(effective).toBe(0.8)
-  })
+  beforeEach(() => vi.clearAllMocks())
 
   it('should save per-game volume to cache', async () => {
     vi.mocked(localforage.getItem).mockResolvedValueOnce({ videoId: 'abc' })
@@ -179,23 +127,10 @@ describe('When user adjusts volume', () => {
 
     const result = await updateCache(12345, { volume: 0.4 })
     expect(result).toEqual({ videoId: 'abc', volume: 0.4 })
-  })
-})
-
-// ─── Scenario: Audio fade behavior ───
-
-describe('When music starts or stops playing', () => {
-  it('fade duration should feel smooth (500-2000ms)', () => {
-    const FADE_DURATION_MS = 800
-    expect(FADE_DURATION_MS).toBeGreaterThanOrEqual(500)
-    expect(FADE_DURATION_MS).toBeLessThanOrEqual(2000)
-  })
-
-  it('fade steps should be frequent enough to avoid audible jumps', () => {
-    const FADE_STEPS = 20
-    const FADE_DURATION_MS = 800
-    const stepInterval = FADE_DURATION_MS / FADE_STEPS
-    expect(stepInterval).toBeLessThanOrEqual(50) // 50ms max per step
+    expect(localforage.setItem).toHaveBeenCalledWith('12345', {
+      videoId: 'abc',
+      volume: 0.4
+    })
   })
 })
 
@@ -228,54 +163,6 @@ describe('When user manages backups', () => {
   })
 })
 
-// ─── Scenario: Custom Invidious instance ───
-
-describe('When user configures custom Invidious instance', () => {
-  const MOCK_INSTANCES = [
-    { name: 'A', url: 'https://inv-a.example.com' },
-    { name: 'B', url: 'https://inv-b.example.com' }
-  ]
-
-  function detectCustom(
-    instances: { url: string }[],
-    loading: boolean,
-    savedUrl: string
-  ) {
-    return (
-      !loading &&
-      instances.length > 0 &&
-      !instances.some((i) => i.url === savedUrl)
-    )
-  }
-
-  it('should NOT show custom toggle while instances are loading', () => {
-    expect(detectCustom([], true, 'https://custom.com')).toBe(false)
-  })
-
-  it('should NOT show custom when saved URL is in the list', () => {
-    expect(
-      detectCustom(MOCK_INSTANCES, false, 'https://inv-a.example.com')
-    ).toBe(false)
-  })
-
-  it('should show custom when saved URL is genuinely custom', () => {
-    expect(detectCustom(MOCK_INSTANCES, false, 'https://my-private.com')).toBe(
-      true
-    )
-  })
-
-  it('should NOT show custom for default URL before list loads', () => {
-    expect(detectCustom([], true, defaultSettings.invidiousInstance)).toBe(
-      false
-    )
-  })
-
-  it('toggling off custom should select first available instance', () => {
-    const newUrl = MOCK_INSTANCES.length > 0 ? MOCK_INSTANCES[0].url : ''
-    expect(newUrl).toBe('https://inv-a.example.com')
-  })
-})
-
 // ─── Scenario: Plugin default settings ───
 
 describe('When plugin loads with default settings', () => {
@@ -300,79 +187,21 @@ describe('When plugin loads with default settings', () => {
   })
 })
 
-// ─── Scenario: KHInsider track selection stores direct URL ───
-
-describe('When user selects a KHInsider track', () => {
-  it('should store the direct audio URL with khi: prefix', () => {
-    const audioUrl = 'https://cdn.example.com/zelda-main-theme.mp3'
-    const videoId = `khi:${audioUrl}`
-    expect(videoId).toBe('khi:https://cdn.example.com/zelda-main-theme.mp3')
-  })
-
-  it('should play directly from the stored URL without re-resolving', () => {
-    const cached = { videoId: 'khi:https://cdn.example.com/track.mp3' }
-    const audioUrl = cached.videoId.slice(4)
-    expect(audioUrl).toBe('https://cdn.example.com/track.mp3')
-    expect(audioUrl).toMatch(/^https:\/\//)
-  })
-
-  it('should not attempt to download KHInsider tracks', () => {
-    const videoId = 'khi:https://cdn.example.com/track.mp3'
-    const shouldSkipDownload = videoId.startsWith('khi:')
-    expect(shouldSkipDownload).toBe(true)
-  })
-})
-
-// ─── Scenario: Search term changes with source toggle ───
-
-describe('When user switches between YouTube and Game OST', () => {
-  it('YouTube should pre-fill with game name + theme music OST', () => {
-    const gameName = 'Elden Ring'
-    const ytSearch = `${gameName} theme music OST`
-    expect(ytSearch).toBe('Elden Ring theme music OST')
-  })
-
-  it('Game OST should pre-fill with just game name', () => {
-    const gameName = 'Elden Ring'
-    expect(gameName).toBe('Elden Ring')
-  })
-
-  it('switching from YouTube to Game OST should remove suffix', () => {
-    const gameName = 'Elden Ring'
-    const ytSearch = `${gameName} theme music OST`
-    const khiSearch = gameName
-    expect(ytSearch.length).toBeGreaterThan(khiSearch.length)
-    expect(khiSearch).not.toContain('theme music')
-  })
-})
-
-// ─── Scenario: Global track sorting across albums ───
-
-describe('When KHInsider returns tracks from multiple albums', () => {
-  it('should sort all tracks by score regardless of album', () => {
-    const tracks = [
-      { albumName: 'Album A', name: 'Battle Theme', score: -3 },
-      { albumName: 'Album B', name: 'Main Theme', score: 10 },
-      { albumName: 'Album A', name: 'Intro', score: 3 }
-    ]
-    tracks.sort((a, b) => b.score - a.score)
-    expect(tracks[0].name).toBe('Main Theme')
-    expect(tracks[0].albumName).toBe('Album B')
-  })
-
-  it('should limit to top 3 albums to avoid excessive API calls', () => {
-    const albums = Array.from({ length: 10 }, (_, i) => ({
-      name: `Album ${i}`,
-      url: `url${i}`
-    }))
-    const limited = albums.slice(0, 3)
-    expect(limited).toHaveLength(3)
-  })
-})
-
-// ─── Improve coverage: audio.ts resolver classes ───
+// ─── Scenario: InvidiousAudioResolver ───
 
 describe('InvidiousAudioResolver', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      status: 200,
+      json: async () => []
+    }) as unknown as typeof fetch
+  })
+
+  afterEach(() => {
+    globalThis.fetch = undefined as unknown as typeof fetch
+  })
+
   it('should return a resolver with getYouTubeSearchResults', () => {
     const resolver = getResolver(false)
     expect(typeof resolver.getYouTubeSearchResults).toBe('function')
@@ -392,6 +221,7 @@ describe('InvidiousAudioResolver', () => {
     const resolver = getResolver(false)
     const result = await resolver.getAudio('Nonexistent Game ZZZZZ')
     expect(result).toBeUndefined()
+    expect(globalThis.fetch).toHaveBeenCalled()
   })
 })
 
@@ -406,7 +236,6 @@ describe('YtDlpAudioResolver', () => {
   it('getAudioUrlFromVideo should call single_yt_url', async () => {
     const resolver = getResolver(true)
     const result = await resolver.getAudioUrlFromVideo({ id: 'test123' })
-    // Mock returns null
     expect(result).toBeUndefined()
   })
 
@@ -422,16 +251,28 @@ describe('YtDlpAudioResolver', () => {
     for await (const r of resolver.getYouTubeSearchResults('test')) {
       results.push(r)
     }
-    // Mock returns null immediately
     expect(results).toEqual([])
   })
 })
 
 describe('InvidiousAudioResolver download', () => {
+  beforeEach(() => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      status: 200,
+      json: async () => ({ adaptiveFormats: [] })
+    }) as unknown as typeof fetch
+  })
+
+  afterEach(() => {
+    globalThis.fetch = undefined as unknown as typeof fetch
+  })
+
   it('downloadAudio should return false when no URL', async () => {
     const resolver = getResolver(false)
     const result = await resolver.downloadAudio({ id: 'test' })
     expect(result).toBe(false)
+    // Verify it tried to fetch audio URL from Invidious
+    expect(globalThis.fetch).toHaveBeenCalled()
   })
 })
 
@@ -444,7 +285,6 @@ describe('musicCache: exportCache and importCache', () => {
     vi.mocked(localforage.iterate).mockImplementation(async () => {})
     const { exportCache } = await import('../cache/musicCache')
     await exportCache()
-    // Should not throw
   })
 
   it('importCache should clear and repopulate', async () => {
@@ -462,7 +302,6 @@ describe('musicCache: exportCache and importCache', () => {
   it('clearDownloads should call backend', async () => {
     const { clearDownloads } = await import('../cache/musicCache')
     await clearDownloads()
-    // Should not throw
   })
 })
 
@@ -491,11 +330,21 @@ describe('KHInsider frontend wrappers', () => {
 // ─── Improve coverage: getInvidiousInstances ───
 
 describe('getInvidiousInstances', () => {
+  beforeEach(() => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      status: 500
+    }) as unknown as typeof fetch
+  })
+
+  afterEach(() => {
+    globalThis.fetch = undefined as unknown as typeof fetch
+  })
+
   it('should return empty array when fetch fails', async () => {
     const { getInvidiousInstances } = await import('../actions/audio')
-    // fetch will fail in test env
     const result = await getInvidiousInstances()
     expect(Array.isArray(result)).toBe(true)
+    expect(result).toEqual([])
   })
 })
 

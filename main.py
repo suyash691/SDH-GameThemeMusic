@@ -28,6 +28,45 @@ def get_ytdlp_path() -> str:
     return os.path.join(decky.DECKY_PLUGIN_DIR, "bin", binary)
 
 
+def track_score(link: str, index: int) -> int:
+    """Score a KHInsider track link for theme-likeness."""
+    lower = link.lower()
+    score = 0
+    if "main-theme" in lower or "main_theme" in lower:
+        score += 10
+    if "title" in lower and "screen" in lower:
+        score += 9
+    if "title" in lower:
+        score += 7
+    if "theme" in lower:
+        score += 6
+    if "opening" in lower:
+        score += 5
+    if "menu" in lower:
+        score += 4
+    if "intro" in lower:
+        score += 3
+    if index < 3:
+        score += 2
+    elif index > 15:
+        score -= 1
+    if "battle" in lower or "combat" in lower or "boss" in lower:
+        score -= 3
+    if "credits" in lower or "ending" in lower:
+        score -= 2
+    return score
+
+
+def track_name(link: str) -> str:
+    """Extract a readable name from a KHInsider track URL."""
+    from urllib.parse import unquote
+    filename = link.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+    name = unquote(unquote(filename))
+    name = name.replace("-", " ").replace("_", " ")
+    name = re.sub(r"^\d{1,3}[\.\s]+", "", name).strip()
+    return name if name else filename
+
+
 class Plugin:
     yt_process: asyncio.subprocess.Process | None = None
     yt_process_lock = asyncio.Lock()
@@ -333,45 +372,6 @@ class Plugin:
                     if link not in seen:
                         seen.add(link)
                         unique_links.append(link)
-
-                def track_score(link: str, index: int) -> int:
-                    lower = link.lower()
-                    score = 0
-                    if "main-theme" in lower or "main_theme" in lower:
-                        score += 10
-                    if "title" in lower and "screen" in lower:
-                        score += 9
-                    if "title" in lower:
-                        score += 7
-                    if "theme" in lower:
-                        score += 6
-                    if "opening" in lower:
-                        score += 5
-                    if "menu" in lower:
-                        score += 4
-                    if "intro" in lower:
-                        score += 3
-                    # Track position bonus (early tracks are more likely themes)
-                    if index < 3:
-                        score += 2
-                    elif index > 15:
-                        score -= 1
-                    # Penalize non-theme tracks
-                    if "battle" in lower or "combat" in lower or "boss" in lower:
-                        score -= 3
-                    if "credits" in lower or "ending" in lower:
-                        score -= 2
-                    return score
-
-                def track_name(link: str) -> str:
-                    """Extract a readable name from the track URL."""
-                    from urllib.parse import unquote
-                    filename = link.rsplit("/", 1)[-1].rsplit(".", 1)[0]
-                    name = unquote(unquote(filename))  # Double decode for double-encoded URLs
-                    name = name.replace("-", " ").replace("_", " ")
-                    # Strip leading track numbers like "01 " or "01. "
-                    name = re.sub(r"^\d{1,3}[\.\s]+", "", name).strip()
-                    return name if name else filename
 
                 tracks = []
                 for i, link in enumerate(unique_links):

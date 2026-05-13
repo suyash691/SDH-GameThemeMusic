@@ -5,6 +5,7 @@ import useThemeMusic from '../../hooks/useThemeMusic'
 import { useSettings } from '../../hooks/useSettings'
 import { getCache } from '../../cache/musicCache'
 import useAudioPlayer from '../../hooks/useAudioPlayer'
+import { getEffectiveVolume } from '../../utils'
 
 class ThemePlayerErrorBoundary extends Component<
   { children?: ReactNode },
@@ -35,11 +36,7 @@ function ThemePlayerInner(): ReactElement {
   useEffect(() => {
     async function getData() {
       const cache = await getCache(parseInt(appid))
-      if (typeof cache?.volume === 'number' && isFinite(cache.volume)) {
-        audioPlayer.setVolume(cache.volume)
-      } else {
-        audioPlayer.setVolume(settings.volume)
-      }
+      audioPlayer.setVolume(getEffectiveVolume(settings.volume, cache?.volume))
     }
     if (!settingsIsLoading) {
       getData()

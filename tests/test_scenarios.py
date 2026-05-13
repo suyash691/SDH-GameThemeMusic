@@ -459,48 +459,24 @@ async def async_iter(items):
 class TestKHInsiderTrackScoring:
     """Plugin should pick the best theme track from an album."""
 
-    def _score(self, link, index=0):
-        """Replicate track_score from main.py."""
-        lower = link.lower()
-        score = 0
-        if "main-theme" in lower or "main_theme" in lower:
-            score += 10
-        if "title" in lower and "screen" in lower:
-            score += 9
-        if "title" in lower:
-            score += 7
-        if "theme" in lower:
-            score += 6
-        if "opening" in lower:
-            score += 5
-        if "menu" in lower:
-            score += 4
-        if "intro" in lower:
-            score += 3
-        if index < 3:
-            score += 2
-        elif index > 15:
-            score -= 1
-        if "battle" in lower or "combat" in lower or "boss" in lower:
-            score -= 3
-        if "credits" in lower or "ending" in lower:
-            score -= 2
-        return score
-
     def test_main_theme_scores_highest(self):
+        from main import track_score
         tracks = ["/album/game/01-battle.mp3", "/album/game/05-main-theme.mp3", "/album/game/10-credits.mp3"]
-        scores = [(self._score(t, i), t) for i, t in enumerate(tracks)]
+        scores = [(track_score(t, i), t) for i, t in enumerate(tracks)]
         scores.sort(key=lambda x: -x[0])
         assert "main-theme" in scores[0][1]
 
     def test_early_tracks_get_position_bonus(self):
-        assert self._score("/album/game/01-ambience.mp3", 0) > self._score("/album/game/01-ambience.mp3", 20)
+        from main import track_score
+        assert track_score("/album/game/01-ambience.mp3", 0) > track_score("/album/game/01-ambience.mp3", 20)
 
     def test_battle_tracks_penalized(self):
-        assert self._score("/album/game/boss-battle.mp3") < 0
+        from main import track_score
+        assert track_score("/album/game/boss-battle.mp3", 10) < 0
 
     def test_title_screen_beats_generic_title(self):
-        assert self._score("/album/game/title-screen.mp3") > self._score("/album/game/title.mp3")
+        from main import track_score
+        assert track_score("/album/game/title-screen.mp3", 5) > track_score("/album/game/title.mp3", 5)
 
 
 # ─── Scenario: KHInsider track name cleaning ───
@@ -509,53 +485,24 @@ class TestKHInsiderTrackScoring:
 class TestKHInsiderTrackNameCleaning:
     """Track names from URLs should be human-readable."""
 
-    def _clean(self, link):
-        import re
-        from urllib.parse import unquote
-        filename = link.rsplit("/", 1)[-1].rsplit(".", 1)[0]
-        name = unquote(unquote(filename))
-        name = name.replace("-", " ").replace("_", " ")
-        name = re.sub(r"^\d{1,3}[\.\s]+", "", name).strip()
-        return name if name else filename
-
     def test_decodes_url_encoded_characters(self):
-        assert "記憶" in self._clean("/album/game/%E8%A8%98%E6%86%B6.mp3")
+        from main import track_name
+        assert "記憶" in track_name("/album/game/%E8%A8%98%E6%86%B6.mp3")
 
     def test_strips_track_numbers(self):
-        assert self._clean("/album/game/01.%20Main%20Theme.mp3") == "Main Theme"
+        from main import track_name
+        assert track_name("/album/game/01.%20Main%20Theme.mp3") == "Main Theme"
 
     def test_replaces_dashes_and_underscores(self):
-        name = self._clean("/album/game/main-theme_remix.mp3")
+        from main import track_name
+        name = track_name("/album/game/main-theme_remix.mp3")
         assert "-" not in name
         assert "_" not in name
 
     def test_handles_double_encoded_urls(self):
-        name = self._clean("/album/game/01%2520Title.mp3")
+        from main import track_name
+        name = track_name("/album/game/01%2520Title.mp3")
         assert "%20" not in name
-
-
-# ─── Scenario: YouTube search term construction ───
-
-
-class TestYouTubeSearchTerms:
-    """YouTube searches should include music-related terms."""
-
-    def test_auto_resolve_uses_ost_keywords(self):
-        """Auto-resolve YouTube search should include theme/OST keywords."""
-        search = "Crimson Desert theme music OST"
-        assert "theme" in search
-        assert "OST" in search
-
-    def test_manual_search_shows_full_term(self):
-        """Manual YouTube search should show the full term in the search field."""
-        game_name = "Elden Ring"
-        initial = f"{game_name} theme music OST"
-        assert initial == "Elden Ring theme music OST"
-
-    def test_khinsider_search_uses_plain_name(self):
-        """KHInsider search should use just the game name."""
-        game_name = "Elden Ring"
-        assert game_name == "Elden Ring"  # No suffix
 
 
 # ─── Scenario: File server error handling ───
@@ -906,54 +853,31 @@ class TestListCacheBackupsMissingDir:
 
 
 class TestKHInsiderTrackScoringAllBranches:
-    """Cover lines 343, 349, 351, 353, 357-358, 363: all scoring branches."""
-
-    def _score(self, link, index=0):
-        import re
-        from urllib.parse import unquote
-        lower = link.lower()
-        score = 0
-        if "main-theme" in lower or "main_theme" in lower:
-            score += 10
-        if "title" in lower and "screen" in lower:
-            score += 9
-        if "title" in lower:
-            score += 7
-        if "theme" in lower:
-            score += 6
-        if "opening" in lower:
-            score += 5
-        if "menu" in lower:
-            score += 4
-        if "intro" in lower:
-            score += 3
-        if index < 3:
-            score += 2
-        elif index > 15:
-            score -= 1
-        if "battle" in lower or "combat" in lower or "boss" in lower:
-            score -= 3
-        if "credits" in lower or "ending" in lower:
-            score -= 2
-        return score
+    """Cover all scoring branches in track_score."""
 
     def test_title_screen_branch(self):
-        assert self._score("/album/g/title-screen.mp3") >= 9
+        from main import track_score
+        assert track_score("/album/g/title-screen.mp3", 5) >= 9
 
     def test_opening_branch(self):
-        assert self._score("/album/g/opening.mp3") >= 5
+        from main import track_score
+        assert track_score("/album/g/opening.mp3", 5) >= 5
 
     def test_menu_branch(self):
-        assert self._score("/album/g/menu.mp3") >= 4
+        from main import track_score
+        assert track_score("/album/g/menu.mp3", 5) >= 4
 
     def test_intro_branch(self):
-        assert self._score("/album/g/intro.mp3") >= 3
+        from main import track_score
+        assert track_score("/album/g/intro.mp3", 5) >= 3
 
     def test_late_track_penalty(self):
-        assert self._score("/album/g/track.mp3", 20) < self._score("/album/g/track.mp3", 0)
+        from main import track_score
+        assert track_score("/album/g/track.mp3", 20) < track_score("/album/g/track.mp3", 0)
 
     def test_credits_penalty(self):
-        assert self._score("/album/g/credits.mp3", 10) < self._score("/album/g/ambience.mp3", 10)
+        from main import track_score
+        assert track_score("/album/g/credits.mp3", 10) < track_score("/album/g/ambience.mp3", 10)
 
 
 class TestKHInsiderTrackFallbackUrl:
