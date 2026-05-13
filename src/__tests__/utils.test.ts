@@ -54,7 +54,9 @@ describe('getEffectiveVolume', () => {
 
 describe('buildSearchTerm', () => {
   it('appends theme music OST for youtube source', () => {
-    expect(buildSearchTerm('Elden Ring', 'youtube')).toBe('Elden Ring theme music OST')
+    expect(buildSearchTerm('Elden Ring', 'youtube')).toBe(
+      'Elden Ring theme music OST'
+    )
   })
 
   it('returns just game name for khinsider source', () => {
@@ -82,7 +84,9 @@ describe('isCustomInstance', () => {
   })
 
   it('returns false when saved URL is in the list', () => {
-    expect(isCustomInstance(instances, false, 'https://inv-a.example.com')).toBe(false)
+    expect(
+      isCustomInstance(instances, false, 'https://inv-a.example.com')
+    ).toBe(false)
   })
 
   it('returns true when saved URL is not in the list', () => {
@@ -92,7 +96,9 @@ describe('isCustomInstance', () => {
 
 describe('isKhiTrack', () => {
   it('returns true for khi: prefixed videoId', () => {
-    expect(isKhiTrack('khi:https://downloads.khinsider.com/album/zelda')).toBe(true)
+    expect(isKhiTrack('khi:https://downloads.khinsider.com/album/zelda')).toBe(
+      true
+    )
   })
 
   it('returns false for regular YouTube videoId', () => {
@@ -106,7 +112,9 @@ describe('isKhiTrack', () => {
 
 describe('extractKhiUrl', () => {
   it('extracts URL after khi: prefix', () => {
-    expect(extractKhiUrl('khi:https://cdn.example.com/track.mp3')).toBe('https://cdn.example.com/track.mp3')
+    expect(extractKhiUrl('khi:https://cdn.example.com/track.mp3')).toBe(
+      'https://cdn.example.com/track.mp3'
+    )
   })
 
   it('returns empty string when only prefix', () => {

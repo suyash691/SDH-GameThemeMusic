@@ -62,7 +62,11 @@ export default function Index() {
   // Once instances load, detect if current setting is custom
   useEffect(() => {
     if (!instancesLoading && instances.length > 0) {
-      const custom = isCustomInstance(instances, instancesLoading, settings.invidiousInstance)
+      const custom = isCustomInstance(
+        instances,
+        instancesLoading,
+        settings.invidiousInstance
+      )
       setUseCustomInstance(custom)
       if (custom) {
         setCustomInstanceUrl(settings.invidiousInstance)
