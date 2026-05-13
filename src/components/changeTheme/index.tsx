@@ -12,6 +12,7 @@ import {
 import { YouTubeVideoPreview } from '../../../types/YouTube'
 import GameSettings from './gameSettings'
 import { useSettings } from '../../hooks/useSettings'
+import { buildSearchTerm } from '../../utils'
 
 type SearchSource = 'youtube' | 'khinsider'
 
@@ -99,18 +100,14 @@ export default function ChangeTheme() {
   }
 
   function setInitialSearch() {
-    const term =
-      searchSource === 'youtube'
-        ? `${initialSearch} theme music OST`
-        : initialSearch
+    const term = buildSearchTerm(initialSearch, searchSource)
     setSearchTerm(term)
     return term
   }
 
   function handleSourceChange(source: SearchSource) {
     setSearchSource(source)
-    const term =
-      source === 'youtube' ? `${initialSearch} theme music OST` : initialSearch
+    const term = buildSearchTerm(initialSearch, source)
     setSearchTerm(term)
   }
 
