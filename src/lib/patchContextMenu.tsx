@@ -221,11 +221,21 @@ function findLibraryContextMenu() {
   }
 }
 
-const libraryContextMenuComponent = findLibraryContextMenu()
-export const LibraryContextMenu = libraryContextMenuComponent
-  ? fakeRenderComponent(
-      libraryContextMenuComponent as Parameters<typeof fakeRenderComponent>[0]
-    ).type
-  : null
+/**
+ * Resolves the LibraryContextMenu component at call time rather than at
+ * module-evaluation time. The webpack chunk search below depends on Steam's UI
+ * chunks being registered on `window.webpackChunksteamui`; running it during
+ * module import can race ahead of that and return `undefined`, which makes the
+ * "Change music…" menu item silently never appear. Call this from inside
+ * `definePlugin` (i.e. after the plugin loads and the SP tab is up) instead.
+ */
+export function getLibraryContextMenu() {
+  const component = findLibraryContextMenu()
+  return component
+    ? fakeRenderComponent(
+        component as Parameters<typeof fakeRenderComponent>[0]
+      ).type
+    : null
+}
 
 export default contextMenuPatch

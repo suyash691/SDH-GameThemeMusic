@@ -5,7 +5,7 @@ import { GiMusicalNotes } from 'react-icons/gi'
 
 import Settings from './components/settings'
 import patchLibraryApp from './lib/patchLibraryApp'
-import patchContextMenu, { LibraryContextMenu } from './lib/patchContextMenu'
+import patchContextMenu, { getLibraryContextMenu } from './lib/patchContextMenu'
 import ChangeTheme from './components/changeTheme'
 import {
   AudioLoaderCompatState,
@@ -32,7 +32,7 @@ export default definePlugin(() => {
     }
   )
 
-  const patchedMenu = patchContextMenu(LibraryContextMenu)
+  const patchedMenu = patchContextMenu(getLibraryContextMenu())
 
   const AppStateRegistrar =
     SteamClient.GameSessions.RegisterForAppLifetimeNotifications(
