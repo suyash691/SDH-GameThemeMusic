@@ -1,38 +1,11 @@
 // https://github.com/hulkrelax/deckfaqs/blob/0dbc26ebd19f4b6e1bc06e5b4c940b1ba77fed22/src/SteamClient.d.ts
 
-// Non-exhaustive definition of the SteamClient that is available in the SP tab
-// This object has a lot more properties/methods than are listed here
-declare namespace SteamClient {
-  const Apps: {
-    GetAllShortcuts(): Promise<Shortcut[]>
-    RegisterForGameActionStart(
-      callback: (
-        actionType: number,
-        strAppId: string,
-        actionName: string
-      ) => unknown
-    ): RegisteredEvent
-  }
-  const InstallFolder: {
-    GetInstallFolders(): Promise<InstallFolder[]>
-  }
-  const GameSessions: {
-    RegisterForAppLifetimeNotifications(
-      callback: (appState: AppState) => unknown
-    ): RegisteredEvent
-  }
-  const BrowserView: {
-    Create(): unknown
-    CreatePopup(): unknown
-    Destroy(e: unknown): void
-  }
-
-  const Storage: {
-    GetJSON(key: string): Promise<string>
-    SetObject(key: string, value: Record<string, unknown>): Promise<void>
-    DeleteKey(key: string): Promise<void>
-  }
-}
+// The global `SteamClient` object is now fully typed by @decky/ui (>=4.11),
+// including `GameSessions.RegisterForAppLifetimeNotifications`, which is the
+// only member this plugin uses. Re-declaring it here caused a duplicate-identifier
+// clash (TS2300), so the local namespace has been removed. The project-specific
+// types below (appStore, AppState, AppOverview, enums) are kept because @decky/ui
+// either does not provide them or does not conflict with them.
 
 declare const enum DisplayStatus {
   Invalid = 0,

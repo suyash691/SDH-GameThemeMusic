@@ -26,26 +26,44 @@ function patchLibraryApp(AudioLoaderCompatState: AudioLoaderCompatState) {
             )?.props?.children
         ],
         (_: Array<Record<string, unknown>>, ret?: ReactElement) => {
-          const container = findInReactTree(
-            ret,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (x: any) =>
-              Array.isArray(x?.props?.children) &&
-              x?.props?.className?.includes(appDetailsClasses.InnerContainer)
-          )
-          if (typeof container !== 'object') {
+          try {
+            // Guard: appDetailsClasses can be undefined if findClassModule
+            // fails to locate the module (e.g. Valve renames HeaderLoaded).
+            const innerContainerClass = appDetailsClasses?.InnerContainer
+            if (!innerContainerClass) {
+              console.debug(
+                'GameThemeMusic: appDetailsClasses.InnerContainer not found, skipping injection'
+              )
+              return ret
+            }
+
+            const container = findInReactTree(
+              ret,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (x: any) =>
+                Array.isArray(x?.props?.children) &&
+                x?.props?.className?.includes(innerContainerClass)
+            )
+            if (typeof container !== 'object') {
+              console.debug(
+                'GameThemeMusic: InnerContainer element not found in app-details tree'
+              )
+              return ret
+            }
+
+            container.props.children.push(
+              <AudioLoaderCompatStateContextProvider
+                AudioLoaderCompatStateClass={AudioLoaderCompatState}
+              >
+                <ThemePlayer />
+              </AudioLoaderCompatStateContextProvider>
+            )
+
+            return ret
+          } catch (e) {
+            console.debug('GameThemeMusic: patchLibraryApp handler failed', e)
             return ret
           }
-
-          container.props.children.push(
-            <AudioLoaderCompatStateContextProvider
-              AudioLoaderCompatStateClass={AudioLoaderCompatState}
-            >
-              <ThemePlayer />
-            </AudioLoaderCompatStateContextProvider>
-          )
-
-          return ret
         }
       )
 
